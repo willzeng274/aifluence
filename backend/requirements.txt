@@ -1,0 +1,6 @@
+fastapi[standard]>=0.115.0
+python-dotenv>=1.0.0
+sqlalchemy>=2.0.0
+python-multipart>=0.0.18
+instagrapi>=2.1.0
+pillow>=11.0.0
