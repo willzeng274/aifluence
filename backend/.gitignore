@@ -7,6 +7,7 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
+.pytest_cache/
 
 # Environment variables
 .env
@@ -21,3 +22,6 @@ __pycache__/
 Thumbs.db
 
 .git/
+
+# Storage
+storage/
