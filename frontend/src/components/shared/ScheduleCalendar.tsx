@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
-import { Clock, FileText, Image as ImageIcon } from "lucide-react";
+import { Clock, FileText, Image as ImageIcon, PlusCircle } from "lucide-react";
 
 export interface ScheduledItem {
 	type: "post" | "story" | "reel";
@@ -16,11 +16,13 @@ export interface Schedule {
 interface ScheduleCalendarProps {
 	schedule: Schedule;
 	showDetailsPanel?: boolean;
+	onAddPost?: (date: Date) => void;
 }
 
 const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
 	schedule,
 	showDetailsPanel = true,
+	onAddPost,
 }) => {
 	const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
 	const [activeMonth, setActiveMonth] = useState(new Date());
@@ -227,17 +229,28 @@ const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
 			</div>
 			{showDetailsPanel && (
 				<div className='bg-black/20 p-4 rounded-xl min-h-[220px] w-full'>
-					<h4 className='font-bold text-base mb-3'>
-						{selectedDate
-							? `Schedule for ${selectedDate.toLocaleDateString(
-									"en-US",
-									{
-										month: "long",
-										day: "numeric",
-									}
-							  )}`
-							: "Select a day"}
-					</h4>
+					<div className='flex justify-between items-center mb-3'>
+						<h4 className='font-bold text-base'>
+							{selectedDate
+								? `Schedule for ${selectedDate.toLocaleDateString(
+										"en-US",
+										{
+											month: "long",
+											day: "numeric",
+										}
+								  )}`
+								: "Select a day"}
+						</h4>
+						{selectedDate && onAddPost && (
+							<button
+								onClick={() => onAddPost(selectedDate)}
+								className='flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors'
+							>
+								<PlusCircle className='w-4 h-4' />
+								Add Post
+							</button>
+						)}
+					</div>
 					{selectedDate ? (
 						scheduleForSelectedDay.length > 0 ? (
 							<ul className='space-y-3'>
