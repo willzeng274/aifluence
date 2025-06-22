@@ -1,7 +1,12 @@
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List, Dict, Any, Literal
-from datetime import datetime, time
+from datetime import datetime
 from database.models import InfluencerMode, VideoStatus, SponsorMatchStatus
+
+class PostingFrequency(BaseModel):
+    """Defines the intervals for automated content posting."""
+    story_interval_hours: Optional[int] = Field(default=24, ge=24, description="Interval in hours for posting new stories.")
+    reel_interval_hours: Optional[int] = Field(default=72, ge=24, description="Interval in hours for posting new reels.")
 
 class InfluencerBase(BaseModel):
     name: str
@@ -11,11 +16,11 @@ class InfluencerBase(BaseModel):
     audience_targeting: Optional[Dict[str, Any]] = None
     growth_phase_enabled: bool = True
     growth_intensity: float = Field(default=0.5, ge=0, le=1)
-    posting_frequency: Optional[Dict[str, Any]] = None
+    posting_frequency: Optional[PostingFrequency] = None
 
 class InfluencerCreate(InfluencerBase):
-    instagram_username: Optional[str] = None
-    instagram_password: Optional[str] = None
+    instagram_username: str
+    instagram_password: str
 
 class Influencer(InfluencerBase):
     id: int
@@ -39,18 +44,32 @@ class OnboardingWizardRequest(BaseModel):
     audience_region: Optional[str] = None
     growth_phase_enabled: bool = True
     growth_intensity: float = Field(default=0.5, ge=0, le=1)
-    posting_frequency: Optional[Dict[str, Any]] = None
-    instagram_username: Optional[str] = None
-    instagram_password: Optional[str] = None
+    posting_frequency: Optional[PostingFrequency] = None
+    instagram_username: str
+    instagram_password: str
+
+class DatedPost(BaseModel):
+    """A specific post scheduled for a given date and time."""
+    post_datetime: datetime = Field(..., description="The exact date and time for the post.")
+    content_type: Literal["post", "story", "reel"] = Field(default="post", description="The type of content to be created.")
+    prompt: Optional[str] = Field(default=None, description="A prompt to guide AI content generation for this post.")
+
+class BulkScheduleRequest(BaseModel):
+    """Request to schedule a batch of specific, dated posts."""
+    influencer_id: int
+    posts: List[DatedPost]
+
+class IntervalScheduleRequest(BaseModel):
+    """Request to schedule posts at regular intervals."""
+    influencer_id: int
+    days_to_schedule: int = Field(default=30, ge=1, description="Number of days into the future to schedule posts.")
+    reel_interval_hours: Optional[int] = Field(default=48, ge=1, description="Interval in hours for posting new reels.")
+    story_interval_hours: Optional[int] = Field(default=12, ge=1, description="Interval in hours for posting new stories.")
 
 class PostType(BaseModel):
     type: Literal["post", "story", "reel"]
     time: str  # "HH:MM AM/PM" format
     
-class DailySchedule(BaseModel):
-    """Schedule for posts on specific days"""
-    posts: List[PostType]
-
 class VideoBase(BaseModel):
     scheduled_time: datetime
     content_type: Literal["post", "story", "reel"] = "post"
@@ -78,29 +97,12 @@ class Video(VideoBase):
     class Config:
         from_attributes = True
 
-class SchedulePattern(BaseModel):
-    """Weekly schedule pattern"""
-    monday: Optional[DailySchedule] = None
-    tuesday: Optional[DailySchedule] = None
-    wednesday: Optional[DailySchedule] = None
-    thursday: Optional[DailySchedule] = None
-    friday: Optional[DailySchedule] = None
-    saturday: Optional[DailySchedule] = None
-    sunday: Optional[DailySchedule] = None
-
 class ScheduleBase(BaseModel):
     run_at: datetime
     is_active: bool = True
 
 class ScheduleCreate(ScheduleBase):
     video_params: VideoCreate
-    
-class BulkScheduleCreate(BaseModel):
-    """Create schedule from pattern"""
-    influencer_id: int
-    schedule_pattern: SchedulePattern
-    start_date: datetime
-    end_date: datetime
 
 class Schedule(ScheduleBase):
     id: int

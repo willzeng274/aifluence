@@ -1,39 +1,154 @@
-# AI Influencer Manager API Documentation
+# AI Influencer Manager API v2.0.0
 
-## Overview
+This document provides an overview of the AI Influencer Manager API, its endpoints, and how to use them.
 
-The AI Influencer Manager is a backend API for creating and managing AI-powered social media influencers. It supports automated content generation, scheduling, and sponsor management.
+## Base URL
 
-## Getting Started
+`http://localhost:8000`
 
-### Installation
+---
 
-```bash
-# Install dependencies
-pip install -r requirements.txt
+## Authentication
 
-# Run the server
-uvicorn app:app --reload
-```
+Most endpoints do not require authentication for this version. The Instagram integration requires credentials which are managed by the `InstagramManager`. The Gemini API requires an API key set via the `GEMINI_API_KEY` environment variable.
 
-The API will be available at `http://localhost:8000`
-
-### Database Setup
-
-The database is automatically initialized on first run. SQLite database is stored at `storage/accounts.db`.
+---
 
 ## Core Concepts
 
-### Influencer Modes
+- **Influencer**: The central entity, representing an AI-generated personality. Each influencer has a defined persona, audience, and content strategy.
+- **Video**: Represents a piece of content (post, story, or reel) to be generated and published.
+- **Schedule**: A specific time slot for a video to be posted.
+- **Sponsor**: A brand or company that can be matched with an influencer for sponsored content.
 
-1. **Lifestyle Mode**: AI generates a realistic life timeline with contextual activities
-2. **Company Mode**: Set-and-forget mode with predetermined posting frequency
+---
 
-### Growth Phases
+## Endpoints
 
-Influencers can have automated growth phases enabled to warm up accounts with organic-looking activity.
+### Influencer Management
 
-## API Endpoints
+#### `POST /sorcerer/init`
+
+Initializes a new AI influencer using an onboarding wizard. This is the primary way to create a new, fully configured influencer. Upon creation, if a posting frequency is provided, it will automatically start scheduling content.
+
+**Request Body:**
+
+```json
+{
+  "mode": "autonomous",
+  "name": "Aria the Explorer",
+  "face_image_url": "http://example.com/aria.jpg",
+  "background_info": "A travel vlogger who explores digital worlds.",
+  "goals": ["grow audience", "promote creativity"],
+  "tone": "adventurous and witty",
+  "audience_age_range": [18, 35],
+  "audience_gender": "all",
+  "audience_interests": ["gaming", "virtual reality", "digital art"],
+  "audience_region": "global",
+  "growth_phase_enabled": true,
+  "growth_intensity": 0.7,
+  "posting_frequency": {
+    "story_interval_hours": 8,
+    "reel_interval_hours": 48
+  },
+  "instagram_username": "aria_explores",
+  "instagram_password": "secure_password_here"
+}
+```
+
+- `mode` (string, enum: `autonomous`, `manual`): The operational mode of the influencer.
+- `posting_frequency` (object, optional): Defines the intervals for automated story and reel creation.
+  - `story_interval_hours` (integer, optional, default: 8): How often to post a new story.
+  - `reel_interval_hours` (integer, optional, default: 72): How often to post a new reel.
+- `instagram_username` (string, **required**): The Instagram username for the influencer.
+- `instagram_password` (string, **required**): The Instagram password.
+
+**Response:** `200 OK` - Returns a detailed `Influencer` object.
+
+---
+
+#### `GET /influencers`
+
+Lists all influencers.
+
+**Query Parameters:**
+
+- `skip` (int, optional, default: 0): Number of influencers to skip.
+- `limit` (int, optional, default: 100): Maximum number of influencers to return.
+
+**Response:** `200 OK` - An array of `Influencer` objects.
+
+---
+
+### Content & Scheduling
+
+#### `POST /schedule/interval`
+
+Schedules stories and reels to be posted at regular intervals over a specified number of days. This is useful for maintaining a consistent posting cadence.
+
+**Request Body:**
+
+```json
+{
+  "influencer_id": 1,
+  "days_to_schedule": 30,
+  "reel_interval_hours": 48,
+  "story_interval_hours": 12
+}
+```
+
+**Response:** `200 OK` - A confirmation message.
+
+---
+
+#### `POST /schedule/bulk`
+
+Schedules a batch of specifically dated posts. This is ideal for planning out a content calendar with precise timing.
+
+**Request Body:**
+
+```json
+{
+  "influencer_id": 1,
+  "posts": [
+    {
+      "post_datetime": "2024-09-01T10:00:00Z",
+      "content_type": "reel",
+      "prompt": "Create a reel about the first day of my new virtual adventure."
+    },
+    {
+      "post_datetime": "2024-09-03T18:30:00Z",
+      "content_type": "story"
+    }
+  ]
+}
+```
+
+**Response:** `200 OK` - A confirmation message.
+
+---
+
+#### `POST /generate-image`
+
+Generates an image based on a text prompt using the Gemini API. The generated image file is saved in the `storage/images` directory and the path is returned.
+
+**Request Body:**
+
+```json
+{
+  "prompt": "a futuristic city skyline at dusk, neon lights, hyper-realistic"
+}
+```
+
+**Response:** `200 OK`
+
+```json
+{
+  "path": "/storage/images/generated_a1b2c3d4.png"
+}
+```
+
+---
 
 ### 1. Influencer Management
 

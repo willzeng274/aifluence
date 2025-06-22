@@ -8,6 +8,7 @@ import asyncio
 
 from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 from google import genai
@@ -17,7 +18,7 @@ from api import schemas
 from managers.instagram_manager import InstagramManager
 from managers.scheduler import video_scheduler
 from managers.ai_generator import ai_generator
-from utils.background_tasks import process_lifestyle_generation, process_bulk_schedule
+from utils.background_tasks import process_interval_schedule, process_dated_schedule
 
 load_dotenv()
 
@@ -31,6 +32,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.mount("/storage", StaticFiles(directory="storage"), name="storage")
+
 ig_manager = InstagramManager()
 
 STORAGE_DIR = Path("storage/files")
@@ -40,6 +43,7 @@ STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 @app.post("/sorcerer/init", response_model=schemas.Influencer)
 def create_influencer_wizard(
     wizard_data: schemas.OnboardingWizardRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
     print(wizard_data)
@@ -66,25 +70,35 @@ def create_influencer_wizard(
         audience_targeting=audience_targeting,
         growth_phase_enabled=wizard_data.growth_phase_enabled,
         growth_intensity=wizard_data.growth_intensity,
-        posting_frequency=wizard_data.posting_frequency
+        posting_frequency=wizard_data.posting_frequency.model_dump() if wizard_data.posting_frequency else None
     )
     db.add(db_influencer)
     db.commit()
     db.refresh(db_influencer)
     
-    if wizard_data.instagram_username and wizard_data.instagram_password:
-        success, message = ig_manager.add_account(
-            wizard_data.instagram_username, 
-            wizard_data.instagram_password
+    success, _message = ig_manager.add_account(
+        wizard_data.instagram_username, 
+        wizard_data.instagram_password
+    )
+    if success:
+        from database.models import InstagramAccount
+        ig_account = db.query(InstagramAccount).filter(
+            InstagramAccount.username == wizard_data.instagram_username
+        ).first()
+        if ig_account:
+            ig_account.influencer_id = db_influencer.id
+            db.commit()
+    else:
+        print(f"Warning: Could not link Instagram account for {wizard_data.name}. Error: {_message}")
+    
+    if wizard_data.posting_frequency:
+        background_tasks.add_task(
+            process_interval_schedule,
+            db_influencer.id,
+            30, # 30 days
+            wizard_data.posting_frequency.reel_interval_hours,
+            wizard_data.posting_frequency.story_interval_hours
         )
-        if success:
-            from database.models import InstagramAccount
-            ig_account = db.query(InstagramAccount).filter(
-                InstagramAccount.username == wizard_data.instagram_username
-            ).first()
-            if ig_account:
-                ig_account.influencer_id = db_influencer.id
-                db.commit()
     
     return db_influencer
 
@@ -124,7 +138,6 @@ def get_influencer_videos(
     if not influencer:
         raise HTTPException(status_code=404, detail="Influencer not found")
     
-    # Query videos with their schedules
     query = db.query(Video, Schedule).join(
         Schedule, Video.id == Schedule.video_id
     ).filter(
@@ -203,30 +216,45 @@ def schedule_video(
     
     return db_schedule
 
-@app.post("/generate/lifestyle")
-def generate_lifestyle_schedule(
-    request: schemas.LifestyleGenerateRequest,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
+@app.post("/schedule/interval")
+def schedule_at_intervals(
+    request: schemas.IntervalScheduleRequest,
+    background_tasks: BackgroundTasks
 ):
-    """Generate AI lifestyle schedule for influencer (async)"""
-    influencer = db.query(Influencer).filter(
-        Influencer.id == request.influencer_id
-    ).first()
-    if not influencer:
-        raise HTTPException(status_code=404, detail="Influencer not found")
-    
+    """
+    Schedules posts (reels, stories) at regular intervals for a set number of days.
+    """
     background_tasks.add_task(
-        process_lifestyle_generation,
+        process_interval_schedule,
         request.influencer_id,
-        request.days,
-        request.intensity
+        request.days_to_schedule,
+        request.reel_interval_hours,
+        request.story_interval_hours
     )
     
     return {
-        "message": "Lifestyle timeline generation started",
-        "influencer_id": influencer.id,
-        "days": request.days,
+        "message": "Interval-based scheduling has started.",
+        "influencer_id": request.influencer_id,
+        "days_to_schedule": request.days_to_schedule,
+        "status": "processing"
+    }
+
+@app.post("/schedule/bulk")
+def create_bulk_dated_schedule(
+    request: schemas.BulkScheduleRequest,
+    background_tasks: BackgroundTasks
+):
+    """Schedules a batch of posts on specific dates and times."""
+    background_tasks.add_task(
+        process_dated_schedule,
+        request.influencer_id,
+        [post.model_dump() for post in request.posts]
+    )
+    
+    return {
+        "message": "Bulk dated schedule creation started.",
+        "influencer_id": request.influencer_id,
+        "posts_count": len(request.posts),
         "status": "processing"
     }
 
@@ -419,36 +447,6 @@ async def generate_image(
 
     raise HTTPException(status_code=500, detail=error_message)
 
-
-@app.post("/schedule/bulk")
-def create_bulk_schedule(
-    request: schemas.BulkScheduleCreate,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
-):
-    """Create bulk schedule from weekly pattern"""
-    influencer = db.query(Influencer).filter(
-        Influencer.id == request.influencer_id
-    ).first()
-    if not influencer:
-        raise HTTPException(status_code=404, detail="Influencer not found")
-    
-    background_tasks.add_task(
-        process_bulk_schedule,
-        request.influencer_id,
-        request.schedule_pattern.model_dump(),
-        request.start_date,
-        request.end_date
-    )
-    
-    return {
-        "message": "Bulk schedule creation started",
-        "influencer_id": influencer.id,
-        "start_date": request.start_date.isoformat(),
-        "end_date": request.end_date.isoformat(),
-        "status": "processing"
-    }
-
 @app.post("/accounts")
 def create_account(
     username: str,
@@ -490,7 +488,7 @@ def root():
         ],
         "endpoints": {
             "influencer": ["/sorcerer/init", "/influencers", "/influencer/{id}"],
-            "scheduling": ["/schedule", "/generate/lifestyle", "/create"],
+            "scheduling": ["/schedule", "/schedule/interval", "/schedule/bulk"],
             "sponsors": ["/sponsors", "/sponsor/match", "/video/{id}/add-sponsor"],
             "legacy": ["/accounts", "/upload/*", "/analytics/*"]
         }
