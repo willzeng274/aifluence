@@ -17,12 +17,14 @@ interface ScheduleCalendarProps {
 	schedule: Schedule;
 	showDetailsPanel?: boolean;
 	onAddPost?: (date: Date) => void;
+	onClickDay?: (date: Date) => void;
 }
 
 const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
 	schedule,
 	showDetailsPanel = true,
 	onAddPost,
+	onClickDay,
 }) => {
 	const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
 	const [activeMonth, setActiveMonth] = useState(new Date());
@@ -51,7 +53,12 @@ const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
 			>
 				<Calendar
 					value={selectedDate}
-					onClickDay={(value) => setSelectedDate(value)}
+					onClickDay={(value) => {
+						setSelectedDate(value);
+						if (onClickDay) {
+							onClickDay(value);
+						}
+					}}
 					onActiveStartDateChange={({ activeStartDate }) =>
 						setActiveMonth(activeStartDate || new Date())
 					}

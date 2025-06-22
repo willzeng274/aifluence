@@ -2,14 +2,7 @@ import React, { useState, useEffect } from "react";
 import "react-calendar/dist/Calendar.css";
 import ScheduleCalendar, {
 	Schedule as ScheduleData,
-	ScheduledItem as ScheduleItem,
 } from "../shared/ScheduleCalendar";
-import { Clock, FileText, Image } from "lucide-react";
-
-interface ScheduledItem {
-	type: "post" | "story";
-	time: string; // e.g., "2:30 PM"
-}
 
 // Helper to generate a schedule based on settings
 const generateSchedule = (
@@ -95,10 +88,10 @@ const CustomSlider = ({
 	max: number;
 	step?: number;
 }) => (
-	<div>
-		<label className='flex justify-between text-sm font-medium text-white/70 mb-2'>
-			<span>{label}</span>
-			<span className='text-white/90 font-bold'>{value}</span>
+	<div className='space-y-2'>
+		<label className='flex justify-between'>
+			<span className='text-sm font-medium text-white/70'>{label}</span>
+			<span className='text-sm text-white/70'>{value}</span>
 		</label>
 		<input
 			type='range'
@@ -107,7 +100,7 @@ const CustomSlider = ({
 			step={step}
 			value={value}
 			onChange={(e) => setValue(parseFloat(e.target.value))}
-			className='w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-teal-500'
+			className='w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-teal-500 [&::-webkit-slider-thumb]:cursor-pointer'
 		/>
 	</div>
 );
@@ -124,6 +117,7 @@ const Step3CompanySchedule: React.FC<Step3CompanyScheduleProps> = ({
 	const [startMonth] = useState(new Date());
 	const [postFrequencyHours, setPostFrequencyHours] = useState(24);
 	const [storyFrequencyHours, setStoryFrequencyHours] = useState(8);
+	const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
 
 	const [scheduledDays, setScheduledDays] = useState<ScheduleData>({});
 
@@ -153,71 +147,169 @@ const Step3CompanySchedule: React.FC<Step3CompanyScheduleProps> = ({
 		});
 	};
 
+
 	return (
-		<>
-			<div className='text-center mb-12'>
-				<h1 className='text-4xl font-bold tracking-tighter'>
-					Set Brand Schedule
-				</h1>
-				<p className='text-white/50 mt-2'>
-					Define the sponsored content rhythm for your brand
-					ambassador.
-				</p>
-			</div>
-
-			<div className='grid grid-cols-1 lg:grid-cols-2 gap-8 items-start'>
-				<div className='space-y-6 bg-white/5 p-6 rounded-2xl border border-white/10'>
-					<CustomSlider
-						label='Post every X hours'
-						value={postFrequencyHours}
-						setValue={setPostFrequencyHours}
-						min={8}
-						max={168}
-					/>
-					<CustomSlider
-						label='Story every X hours'
-						value={storyFrequencyHours}
-						setValue={setStoryFrequencyHours}
-						min={1}
-						max={48}
-					/>
-
-					<div className='flex flex-wrap gap-x-4 gap-y-2 pt-4 text-xs'>
-						<div className='flex items-center gap-2'>
-							<div className='w-3 h-3 rounded-full bg-teal-500'></div>
-							Post
-						</div>
-						<div className='flex items-center gap-2'>
-							<div className='w-3 h-3 rounded-full bg-orange-500'></div>
-							Story
-						</div>
-						<div className='flex items-center gap-2'>
-							<div className='w-3 h-3 rounded-full bg-gradient-to-r from-teal-500 to-orange-500'></div>
-							Both
-						</div>
+		<div className='relative min-h-screen overflow-y-auto overflow-x-hidden'>
+			<div className='absolute -top-20 -left-20 w-40 h-40 bg-white/5 blur-3xl' />
+			<div className='absolute -bottom-20 -right-20 w-60 h-60 bg-white/5 blur-3xl' />
+			
+			<div className='relative z-10 p-8'>
+				<div className='mb-6'>
+					<div className='flex items-baseline gap-4 mb-3'>
+						<div className='w-20 h-px bg-gradient-to-r from-white/50 to-transparent' />
+						<span className='text-white/30 text-xs tracking-[0.3em] uppercase'>Configure</span>
+					</div>
+					
+					<h1 className='text-4xl font-black tracking-tighter leading-none mb-2'>
+						<span className='text-white/90'>CUSTOMIZE YOUR</span>
+						<br />
+						<span className='text-white/60'>POSTING SCHEDULE</span>
+					</h1>
+					
+					<div className='flex items-center gap-6 mt-3'>
+						<div className='flex-1 h-px bg-gradient-to-r from-white/20 via-white/10 to-transparent' />
+						<p className='text-white/40 text-xs uppercase tracking-wider'>
+							Set your content frequency
+						</p>
+						<div className='flex-1 h-px bg-gradient-to-l from-white/20 via-white/10 to-transparent' />
 					</div>
 				</div>
 
-				<div className='lg:col-span-1'>
-					<ScheduleCalendar schedule={scheduledDays} />
+				<div className='grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6'>
+					<div className='space-y-6'>
+						<div className='border border-white/10 p-6'>
+							<h3 className='text-lg font-semibold mb-6'>
+								Schedule Settings
+							</h3>
+							<div className='space-y-6'>
+								<CustomSlider
+									label='Post Frequency (Hours)'
+									value={postFrequencyHours}
+									setValue={setPostFrequencyHours}
+									min={8}
+									max={168}
+								/>
+								<CustomSlider
+									label='Story Frequency (Hours)'
+									value={storyFrequencyHours}
+									setValue={setStoryFrequencyHours}
+									min={1}
+									max={48}
+								/>
+
+								<div className='pt-4 border-t border-white/10'>
+									<p className='text-sm font-medium text-white/70 mb-3'>
+										Legend
+									</p>
+									<div className='flex flex-wrap gap-4'>
+										<div className='flex items-center gap-2'>
+											<div className='w-3 h-3 rounded-full bg-teal-500' />
+											<span className='text-sm text-white/60'>Post</span>
+										</div>
+										<div className='flex items-center gap-2'>
+											<div className='w-3 h-3 rounded-full bg-orange-500' />
+											<span className='text-sm text-white/60'>Story</span>
+										</div>
+										<div className='flex items-center gap-2'>
+											<div className='w-3 h-3 rounded-full bg-gradient-to-r from-teal-500 to-orange-500' />
+											<span className='text-sm text-white/60'>Both</span>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<div className='border border-white/10 p-6 mt-6'>
+							<h4 className='font-bold text-base mb-4'>
+								{selectedDate
+									? `Schedule for ${selectedDate.toLocaleDateString(
+											"en-US",
+											{
+												month: "long",
+												day: "numeric",
+											}
+									  )}`
+									: "Select a day"}
+							</h4>
+							{selectedDate ? (
+								(() => {
+									const selectedDateKey = selectedDate.toISOString().split("T")[0];
+									const scheduleForSelectedDay = scheduledDays[selectedDateKey] || [];
+									return scheduleForSelectedDay.length > 0 ? (
+										<ul className='space-y-3 max-h-64 overflow-y-auto'>
+											{scheduleForSelectedDay.map((item, index) => (
+												<li key={index} className='flex items-start text-sm'>
+													<span className='text-white/50 mr-3'>
+														{item.time}
+													</span>
+													<div className='flex-1'>
+														<div className='flex items-center gap-2 mb-1'>
+															{item.type === "post" ? (
+																<span className='text-teal-400 text-xs'>Post</span>
+															) : (
+																<span className='text-orange-400 text-xs'>Story</span>
+															)}
+														</div>
+														<p className='text-white/60 text-xs'>
+															{item.description}
+														</p>
+													</div>
+												</li>
+											))}
+										</ul>
+									) : (
+										<div className='text-center text-white/50 pt-10 text-sm'>
+											No scheduled events.
+										</div>
+									);
+								})()
+							) : (
+								<div className='text-center text-white/50 pt-10 text-sm'>
+									Click on a calendar day.
+								</div>
+							)}
+						</div>
+					</div>
+
+					<div className='border border-white/10 p-6'>
+						<h3 className='text-lg font-semibold mb-6'>
+							Calendar Preview
+						</h3>
+						<ScheduleCalendar 
+							schedule={scheduledDays} 
+							showDetailsPanel={false}
+							onClickDay={(date: Date) => setSelectedDate(date)}
+						/>
+					</div>
+				</div>
+
+				<div className='mt-6'>
+					<div className='h-px bg-gradient-to-r from-transparent via-white/20 to-transparent mb-4' />
+					
+					<div className='flex items-center justify-between'>
+						<button
+							onClick={onBack}
+							className='group flex items-center gap-3 relative overflow-hidden'
+						>
+							<div className='absolute inset-0 bg-gradient-to-r from-white/5 to-transparent translate-x-full group-hover:translate-x-0 transition-transform duration-500' />
+							<span className='relative px-6 py-2.5 border border-white/20 bg-black/50 backdrop-blur-sm group-hover:border-white/40 transition-all duration-300'>
+								<span className='font-semibold uppercase tracking-wider text-sm'>Back</span>
+							</span>
+						</button>
+						
+						<button
+							onClick={handleSubmit}
+							className='group flex items-center gap-3 relative overflow-hidden'
+						>
+							<div className='absolute inset-0 bg-gradient-to-r from-orange-500/20 to-teal-500/20 translate-x-full group-hover:translate-x-0 transition-transform duration-500' />
+							<span className='relative px-6 py-2.5 border border-white/20 bg-black/50 backdrop-blur-sm group-hover:border-white/40 transition-all duration-300'>
+								<span className='font-semibold uppercase tracking-wider text-sm'>Continue</span>
+							</span>
+						</button>
+					</div>
 				</div>
 			</div>
-
-			<div className='flex items-center justify-between pt-12'>
-				<button
-					onClick={onBack}
-					className='px-6 py-2 text-white/60 hover:text-white transition-colors'
-				>
-					Back
-				</button>
-				<button
-					onClick={handleSubmit}
-					className='px-8 py-3 bg-gradient-to-r from-orange-500 to-teal-500 rounded-lg font-semibold text-base hover:opacity-90 transition-opacity'
-				>
-					Finish Setup
-				</button>
-			</div>
-		</>
+		</div>
 	);
 };
 

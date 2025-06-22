@@ -146,7 +146,7 @@ const CreateInfluencerPage = () => {
 	const mode = formData.mode;
 
 	return (
-		<div className='min-h-screen w-full bg-[#111111] text-white flex items-center justify-center p-8 overflow-hidden'>
+		<div className='min-h-screen w-full bg-[#111111] text-white flex items-center justify-center overflow-hidden'>
 			<div className='absolute inset-0 -z-10 h-full w-full bg-[#111111] bg-[radial-gradient(#ffffff1a_1px,transparent_1px)] [background-size:32px_32px]'></div>
 			<div className='absolute inset-0 -z-20 h-full w-full bg-gradient-to-tr from-black via-transparent to-purple-900/50 opacity-60'></div>
 
