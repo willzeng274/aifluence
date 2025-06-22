@@ -101,7 +101,7 @@ const CreateInfluencerPage = () => {
 
 		// TODO: This is a temporary fix to handle the company schedule. Modify backend to handle this.
 		apiPayload.posting_frequency = {
-			story_interval_hours: schedule.story_interval_hours,
+			story_interval_hours: schedule.storyFrequencyHours,
 			reel_interval_hours: schedule.postFrequencyHours,
 		};
 
