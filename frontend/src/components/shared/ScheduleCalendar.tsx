@@ -4,7 +4,7 @@ import "react-calendar/dist/Calendar.css";
 import { Clock, FileText, Image as ImageIcon } from "lucide-react";
 
 export interface ScheduledItem {
-	type: "post" | "story";
+	type: "post" | "story" | "reel";
 	time: string;
 	description: string;
 }
@@ -72,8 +72,11 @@ const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
 							const dateKey = date.toISOString().split("T")[0];
 							const daySchedule = schedule[dateKey];
 							if (daySchedule && daySchedule.length > 0) {
+								console.log(daySchedule);
 								const hasPost = daySchedule.some(
-									(item) => item.type === "post"
+									(item) =>
+										item.type === "reel" ||
+										item.type === "post"
 								);
 								const hasStory = daySchedule.some(
 									(item) => item.type === "story"
@@ -257,6 +260,11 @@ const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
 														<div className='flex items-center gap-2 text-teal-400 text-xs'>
 															<FileText className='w-3 h-3' />
 															Post
+														</div>
+													) : item.type === "reel" ? (
+														<div className='flex items-center gap-2 text-teal-400 text-xs'>
+															<FileText className='w-3 h-3' />
+															Reel
 														</div>
 													) : (
 														<div className='flex items-center gap-2 text-orange-400 text-xs'>

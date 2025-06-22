@@ -4,35 +4,110 @@ import { Sparkles, ArrowRight } from "lucide-react";
 interface Step2AvatarGenerationProps {
 	onBack: () => void;
 	onSubmit: (data: { description: string; avatarUrl: string }) => void;
+	formData: any; // A more specific type is recommended
+}
+
+/**
+ * Generates a descriptive prompt for an image generation model.
+ */
+function generateInstagramInfluencerPrompt({
+	mode,
+	name,
+	physicalDescription,
+	backgroundInfo,
+	goals,
+	tone,
+	audienceAgeRange,
+	audienceGender,
+	audienceInterests,
+	audienceRegion,
+}: any): string {
+	const goalsStr = goals?.join(", ") || "build a community";
+	const interestsStr = audienceInterests?.join(", ") || "popular culture";
+
+	return `Generate a realistic, high-quality Instagram influencer portrait of a ${
+		mode || "lifestyle"
+	} creator named ${name}.
+They are described as: ${physicalDescription}.
+Context/Background: ${backgroundInfo}.
+Their main goals are to ${goalsStr}.
+Render in a ${tone} tone and aesthetic.
+Target audience: ages ${audienceAgeRange?.[0] || 18}–${
+		audienceAgeRange?.[1] || 35
+	}, gender "${
+		audienceGender || "all"
+	}", interests in ${interestsStr}, based in ${
+		audienceRegion || "North America"
+	}.
+The image should be a close-up or medium shot, well-lit, and suitable for a social media profile picture.`;
 }
 
 const Step2AvatarGeneration: React.FC<Step2AvatarGenerationProps> = ({
 	onBack,
 	onSubmit,
+	formData,
 }) => {
-	const [description, setDescription] = useState("");
+	const [physicalDescription, setPhysicalDescription] = useState("");
 	const [avatarUrl, setAvatarUrl] = useState(
 		"https://api.dicebear.com/7.x/bottts/svg?seed=placeholder"
 	);
 	const [isGenerating, setIsGenerating] = useState(false);
 
-	const handleGenerate = () => {
-		if (!description) return;
+	const handleGenerate = async () => {
+		if (!physicalDescription) {
+			alert("Please provide a physical description.");
+			return;
+		}
 		setIsGenerating(true);
-		// Use a placeholder API (RoboHash) to generate an image from the description
-		const generatedUrl = `https://robohash.org/${encodeURIComponent(
-			description
-		)}.png?set=set4`;
 
-		// Simulate API call delay
-		setTimeout(() => {
-			setAvatarUrl(generatedUrl);
+		const prompt = generateInstagramInfluencerPrompt({
+			...formData,
+			physicalDescription,
+		});
+
+		console.log("Generated Prompt:", prompt);
+
+		try {
+			const response = await fetch(
+				"http://localhost:8000/generate-image",
+				{
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+						accept: "application/json",
+					},
+					body: JSON.stringify({ prompt }),
+				}
+			);
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				console.error("Image generation failed:", errorData);
+				alert(
+					`Failed to generate image: ${
+						errorData.detail || "An unknown error occurred."
+					}`
+				);
+				setIsGenerating(false);
+				return;
+			}
+
+			const result = await response.json();
+			// Prepend the backend server URL to the image path
+			const fullAvatarUrl = `http://localhost:8000${result.path}`;
+			setAvatarUrl(fullAvatarUrl);
+		} catch (error) {
+			console.error("Error calling image generation API:", error);
+			alert(
+				"An error occurred while generating the image. Please try again."
+			);
+		} finally {
 			setIsGenerating(false);
-		}, 1500);
+		}
 	};
 
 	const handleSubmit = () => {
-		onSubmit({ description, avatarUrl });
+		onSubmit({ description: physicalDescription, avatarUrl });
 	};
 
 	return (
@@ -42,7 +117,8 @@ const Step2AvatarGeneration: React.FC<Step2AvatarGenerationProps> = ({
 					Generate Persona's Look
 				</h1>
 				<p className='text-white/50 mt-2'>
-					Describe the visual appearance of your AI persona.
+					Describe the visual appearance of your AI persona. This will
+					be used to generate their avatar.
 				</p>
 			</div>
 
@@ -53,20 +129,22 @@ const Step2AvatarGeneration: React.FC<Step2AvatarGenerationProps> = ({
 							htmlFor='description'
 							className='text-sm font-medium text-white/80'
 						>
-							Appearance Description
+							Physical Appearance Description
 						</label>
 						<textarea
 							id='description'
-							value={description}
-							onChange={(e) => setDescription(e.target.value)}
-							placeholder='e.g., "A young woman with long, silver hair, wearing futuristic cyberpunk attire, standing in a neon-lit city of Tokyo..."'
+							value={physicalDescription}
+							onChange={(e) =>
+								setPhysicalDescription(e.target.value)
+							}
+							placeholder='e.g., "A young woman with long, silver hair, wearing futuristic cyberpunk attire..."'
 							className='w-full h-40 bg-white/5 p-4 rounded-lg border border-white/10 focus:ring-2 focus:ring-teal-500 focus:outline-none transition'
 							rows={5}
 						/>
 					</div>
 					<button
 						onClick={handleGenerate}
-						disabled={isGenerating || !description}
+						disabled={isGenerating || !physicalDescription}
 						className='w-full flex items-center justify-center gap-2 px-6 py-3 bg-teal-600 rounded-lg font-semibold text-base hover:bg-teal-700 transition-colors disabled:bg-white/10 disabled:cursor-not-allowed'
 					>
 						{isGenerating ? (
