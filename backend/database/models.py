@@ -70,10 +70,8 @@ class Video(Base):
     sponsor_id = Column(Integer, ForeignKey("sponsors.id"), nullable=True)
     scheduled_time = Column(DateTime, nullable=False)
     content_type = Column(String(20), default="post")  # post, story, reel
-    script = Column(Text, nullable=True)
-    storyboard = Column(JSON, nullable=True)
+    generation_prompt = Column(JSON, nullable=True)
     video_url = Column(String(500), nullable=True)
-    thumbnail_url = Column(String(500), nullable=True)
     caption = Column(Text, nullable=True)
     hashtags = Column(JSON, nullable=True)
     platform = Column(String(50), default="instagram")

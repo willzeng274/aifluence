@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 import os
 import uuid
 from dotenv import load_dotenv
@@ -17,7 +17,6 @@ from database.models import get_db, Influencer, Video, Schedule, Sponsor, Sponso
 from api import schemas
 from managers.instagram_manager import InstagramManager
 from managers.scheduler import video_scheduler
-from managers.ai_generator import ai_generator
 from utils.background_tasks import process_interval_schedule, process_dated_schedule
 
 load_dotenv()
@@ -77,7 +76,7 @@ def create_influencer_wizard(
     db.refresh(db_influencer)
     
     success, _message = ig_manager.add_account(
-        wizard_data.instagram_username, 
+        wizard_data.instagram_username,
         wizard_data.instagram_password
     )
     if success:
@@ -95,7 +94,7 @@ def create_influencer_wizard(
         background_tasks.add_task(
             process_interval_schedule,
             db_influencer.id,
-            30, # 30 days
+            7, # 7 days
             wizard_data.posting_frequency.reel_interval_hours,
             wizard_data.posting_frequency.story_interval_hours
         )
@@ -186,7 +185,7 @@ def schedule_video(
         influencer_id=schedule_data.video_params.influencer_id,
         sponsor_id=schedule_data.video_params.sponsor_id,
         scheduled_time=schedule_data.video_params.scheduled_time,
-        script=schedule_data.video_params.script,
+        generation_prompt=schedule_data.video_params.generation_prompt.model_dump() if schedule_data.video_params.generation_prompt else None,
         caption=schedule_data.video_params.caption,
         hashtags=schedule_data.video_params.hashtags,
         platform=schedule_data.video_params.platform
@@ -216,6 +215,7 @@ def schedule_video(
     
     return db_schedule
 
+# For company mode
 @app.post("/schedule/interval")
 def schedule_at_intervals(
     request: schemas.IntervalScheduleRequest,
@@ -258,6 +258,36 @@ def create_bulk_dated_schedule(
         "status": "processing"
     }
 
+@app.post("/video/generate", response_model=schemas.Video)
+def generate_video_from_prompt(
+    request: schemas.VideoGenerationRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Creates a video entry from a detailed prompt. This is the first step in the video generation pipeline.
+    The actual video file generation is TBD and will be handled by a separate process.
+    """
+    influencer = db.query(Influencer).filter(Influencer.id == request.influencer_id).first()
+    if not influencer:
+        raise HTTPException(status_code=404, detail="Influencer not found")
+
+    db_video = Video(
+        influencer_id=request.influencer_id,
+        scheduled_time=datetime.now() + timedelta(hours=1),
+        generation_prompt=request.prompt.model_dump(),
+        status=VideoStatus.PENDING,
+        content_type="reel"
+    )
+    db.add(db_video)
+    db.commit()
+    db.refresh(db_video)
+
+    # Here you would trigger the actual video generation pipeline
+    # For now, we just return the created video object
+    
+    return db_video
+
+
 @app.post("/create")
 def trigger_video_generation(
     video_id: int,
@@ -270,30 +300,21 @@ def trigger_video_generation(
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")
     
-    if not video.script:
-        influencer = db.query(Influencer).filter(Influencer.id == video.influencer_id).first()
-        script_data = ai_generator.generate_script(influencer.persona)
-        video.script = script_data["full_script"]
-        video.caption = ai_generator.generate_caption(script_data)
-    
-    storyboard = ai_generator.generate_storyboard(
-        {"full_script": video.script}
-    )
-    video.storyboard = storyboard
+    # The script and storyboard generation is now part of the video generation pipeline,
+    # triggered by the /video/generate endpoint. This endpoint is now simplified.
+    # It could be used to re-process a video or for other purposes.
     
     video.status = VideoStatus.PROCESSING
     db.commit()
 
     video.video_url = f"/files/generated_video_{video.id}.mp4"
-    video.thumbnail_url = f"/files/thumbnail_{video.id}.jpg"
     video.status = VideoStatus.POSTED
     db.commit()
     
     return {
         "video_id": video.id,
         "status": video.status.value,
-        "video_url": video.video_url,
-        "thumbnail_url": video.thumbnail_url
+        "video_url": video.video_url
     }
 
 @app.post("/sponsors", response_model=schemas.Sponsor)
@@ -367,18 +388,6 @@ def add_sponsor_to_video(
     
     video.sponsor_id = sponsor_id
     
-    if video.status == VideoStatus.PENDING:
-        influencer = db.query(Influencer).filter(Influencer.id == video.influencer_id).first()
-        script_data = ai_generator.generate_script(
-            influencer.persona,
-            sponsor_info={
-                "company_name": sponsor.company_name,
-                "product_info": sponsor.product_info
-            }
-        )
-        video.script = script_data["full_script"]
-        video.caption = ai_generator.generate_caption(script_data)
-    
     db.commit()
     
     return {
@@ -447,50 +456,45 @@ async def generate_image(
 
     raise HTTPException(status_code=500, detail=error_message)
 
-@app.post("/accounts")
-def create_account(
-    username: str,
-    password: str,
-    influencer_id: Optional[int] = None,
-    db: Session = Depends(get_db)
-):
-    """Add Instagram account to influencer"""
-    success, message = ig_manager.add_account(username, password)
-    if not success:
-        raise HTTPException(status_code=400, detail=message)
+# @app.post("/accounts")
+# def create_account(
+#     username: str,
+#     password: str,
+#     influencer_id: Optional[int] = None,
+#     db: Session = Depends(get_db)
+# ):
+#     """Add Instagram account to influencer"""
+#     success, message = ig_manager.add_account(username, password)
+#     if not success:
+#         raise HTTPException(status_code=400, detail=message)
 
-    if influencer_id:
-        from database.models import InstagramAccount
-        influencer = db.query(Influencer).filter(
-            Influencer.id == influencer_id
-        ).first()
-        if influencer:
-            ig_account = db.query(InstagramAccount).filter(
-                InstagramAccount.username == username
-            ).first()
-            if ig_account:
-                ig_account.influencer_id = influencer_id
-                db.commit()
+#     if influencer_id:
+#         from database.models import InstagramAccount
+#         influencer = db.query(Influencer).filter(
+#             Influencer.id == influencer_id
+#         ).first()
+#         if influencer:
+#             ig_account = db.query(InstagramAccount).filter(
+#                 InstagramAccount.username == username
+#             ).first()
+#             if ig_account:
+#                 ig_account.influencer_id = influencer_id
+#                 db.commit()
     
-    return {"success": True, "username": username, "message": message}
+#     return {"success": True, "username": username, "message": message}
 
 @app.get("/")
 def root():
     return {
-        "name": "AI Influencer Manager API",
-        "version": "2.0.0",
-        "features": [
-            "AI influencer persona management",
-            "Automated content scheduling",
-            "AI-powered script and lifestyle generation",
-            "Sponsor management and matching",
-            "Instagram integration"
-        ],
+        "name": "AIfluence API",
+        "version": "1.0.0",
         "endpoints": {
             "influencer": ["/sorcerer/init", "/influencers", "/influencer/{id}"],
             "scheduling": ["/schedule", "/schedule/interval", "/schedule/bulk"],
+            "video_generation": ["/video/generate"],
             "sponsors": ["/sponsors", "/sponsor/match", "/video/{id}/add-sponsor"],
-            "legacy": ["/accounts", "/upload/*", "/analytics/*"]
+            "image generation": ["/generate-image"],
+            # "legacy": ["/accounts", "/upload/*", "/analytics/*"],
         }
     }
 

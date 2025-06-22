@@ -69,11 +69,16 @@ class IntervalScheduleRequest(BaseModel):
 class PostType(BaseModel):
     type: Literal["post", "story", "reel"]
     time: str  # "HH:MM AM/PM" format
-    
+
+class VideoGenerationPrompt(BaseModel):
+    """The prompt for generating a video, separated into objective description and subjective intention."""
+    description: str = Field(description="A third-person narrative describing the scene: environment, actions, and dialogue.")
+    intention: str = Field(description="A first-person, internal monologue describing the character's thoughts, feelings, or motivation.")
+
 class VideoBase(BaseModel):
     scheduled_time: datetime
     content_type: Literal["post", "story", "reel"] = "post"
-    script: Optional[str] = None
+    generation_prompt: Optional[VideoGenerationPrompt] = None
     caption: Optional[str] = None
     hashtags: Optional[List[str]] = None
     platform: str = "instagram"
@@ -86,7 +91,6 @@ class Video(VideoBase):
     id: int
     influencer_id: int
     sponsor_id: Optional[int] = None
-    storyboard: Optional[Dict[str, Any]] = None
     video_url: Optional[str] = None
     thumbnail_url: Optional[str] = None
     status: VideoStatus
@@ -96,6 +100,10 @@ class Video(VideoBase):
 
     class Config:
         from_attributes = True
+
+class VideoGenerationRequest(BaseModel):
+    influencer_id: int
+    prompt: VideoGenerationPrompt
 
 class ScheduleBase(BaseModel):
     run_at: datetime
@@ -152,12 +160,6 @@ class SponsorMatch(SponsorMatchBase):
 
     class Config:
         from_attributes = True
-
-class LifestyleGenerateRequest(BaseModel):
-    influencer_id: int
-    days: int = Field(default=30, ge=1, le=90)
-    activities: Optional[List[str]] = None
-    intensity: float = Field(default=0.5, ge=0, le=1)
 
 class ImageGenerateRequest(BaseModel):
     prompt: str

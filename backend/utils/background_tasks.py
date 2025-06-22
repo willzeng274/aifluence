@@ -47,18 +47,24 @@ def process_interval_schedule(
             scheduled_time = item["time"]
             content_type = item["type"]
             
-            # Generate a generic script and caption
-            script_data = ai_generator.generate_script(
+            # Generate a scene prompt using the influencer's persona
+            prompt_data = ai_generator.generate_scene_prompt(
                 influencer.persona,
-                context=f"A day in the life: a {content_type}."
+                context=f"A short {content_type} about the influencer's daily life or a recent thought."
             )
+            
+            # The generation_prompt is now the direct output of the AI
+            generation_prompt = prompt_data
+            
+            # Generate a caption from the new prompt data
+            caption = ai_generator.generate_caption(prompt_data)
             
             db_video = Video(
                 influencer_id=influencer.id,
                 scheduled_time=scheduled_time,
                 content_type=content_type,
-                script=script_data.get("full_script"),
-                caption=ai_generator.generate_caption(script_data),
+                generation_prompt=generation_prompt,
+                caption=caption,
                 hashtags=["lifestyle", "aiinfluencer", f"dayinthelife"],
                 platform="instagram"
             )
@@ -110,24 +116,29 @@ def process_dated_schedule(influencer_id: int, posts: List[Dict[str, Any]]):
             if post.post_datetime < datetime.now():
                 continue
             
-            script = None
+            generation_prompt = None
             caption = None
             hashtags = ["aiinfluencer"]
             
             if post.prompt:
-                script_data = ai_generator.generate_script(
+                # Generate a scene prompt using the influencer's persona and the specific post prompt
+                prompt_data = ai_generator.generate_scene_prompt(
                     influencer.persona,
                     context=post.prompt
                 )
-                script = script_data.get("full_script")
-                caption = ai_generator.generate_caption(script_data)
+                
+                # The generation_prompt is now the direct output of the AI
+                generation_prompt = prompt_data
+                
+                # Generate a caption from the new prompt data
+                caption = ai_generator.generate_caption(prompt_data)
                 hashtags.append(post.content_type)
 
             db_video = Video(
                 influencer_id=influencer_id,
                 scheduled_time=post.post_datetime,
                 content_type=post.content_type,
-                script=script,
+                generation_prompt=generation_prompt,
                 caption=caption,
                 hashtags=hashtags,
                 platform="instagram"
