@@ -1,5 +1,6 @@
 import React from "react";
 import Image from "next/image";
+import ScheduleCalendar from "./shared/ScheduleCalendar";
 
 type Influencer = {
 	id: number;
@@ -12,6 +13,7 @@ type Influencer = {
 	engagement: string;
 	bio: string;
 	followerHistory: { month: string; followers: number }[];
+	schedule?: Record<string, { type: string; time: string; description: string }[]>;
 };
 
 type Props = {
@@ -44,7 +46,7 @@ const InfluencerDetailsSidebar = ({
 	onConnect,
 }: Props) => {
 	return (
-		<aside className='absolute top-0 right-0 h-full w-[380px] bg-black/40 backdrop-blur-xl border-l border-white/10 z-30 flex flex-col p-8 animate-slide-in'>
+		<aside className='absolute top-0 right-0 h-full w-[380px] bg-black/40 backdrop-blur-xl border-l border-white/10 z-30 flex flex-col p-8 animate-slide-in overflow-y-auto'>
 			{/* Header */}
 			<div className='flex justify-between items-center mb-8'>
 				<h2 className='text-xl font-semibold'>Profile</h2>
@@ -122,6 +124,29 @@ const InfluencerDetailsSidebar = ({
 						{influencer.bio}
 					</p>
 				</div>
+
+				{/* Schedule Calendar */}
+				{influencer.schedule ? (
+					<div className="mt-6 w-full">
+						<ScheduleCalendar
+							schedule={
+								Object.fromEntries(
+									Object.entries(influencer.schedule ?? {}).map(([date, items]) => [
+										date,
+										items.map(item => ({
+											...item,
+											type: item.type as "post" | "story",
+										})),
+									])
+								)
+							}
+						/>
+					</div>
+				) : (
+					<div className="mt-6 w-full text-white/50 text-sm text-center">
+						No schedule available.
+					</div>
+				)}
 			</div>
 
 			{/* Footer Button */}

@@ -17,6 +17,14 @@ export const influencers = [
 			{ month: "May", followers: 2.3 },
 			{ month: "Jun", followers: 2.5 },
 		],
+		schedule: {
+			"2025-06-02": [
+				{ type: "post", time: "9:15 AM", description: "Morning post about new collection" },
+				{ type: "story", time: "12:00 PM", description: "Lunch break story" },
+				{ type: "story", time: "6:30 PM", description: "Evening Q&A" }
+			],
+			// more dates...
+		}
 	},
 	{
 		id: 12,
@@ -36,6 +44,14 @@ export const influencers = [
 			{ month: "May", followers: 1.05 },
 			{ month: "Jun", followers: 1.1 },
 		],
+		schedule: {
+			"2025-06-02": [
+				{ type: "post", time: "9:15 AM", description: "Morning post about new collection" },
+				{ type: "story", time: "12:00 PM", description: "Lunch break story" },
+				{ type: "story", time: "6:30 PM", description: "Evening Q&A" }
+			],
+			// more dates...
+		}
 	},
 	{
 		id: 123,
@@ -55,6 +71,14 @@ export const influencers = [
 			{ month: "May", followers: 4.4 },
 			{ month: "Jun", followers: 4.5 },
 		],
+		schedule: {
+			"2025-06-02": [
+				{ type: "post", time: "9:15 AM", description: "Morning post about new collection" },
+				{ type: "story", time: "12:00 PM", description: "Lunch break story" },
+				{ type: "story", time: "6:30 PM", description: "Evening Q&A" }
+			],
+			// more dates...
+		}
 	},
 	{
 		id: 2,
@@ -74,6 +98,14 @@ export const influencers = [
 			{ month: "May", followers: 1.75 },
 			{ month: "Jun", followers: 1.8 },
 		],
+		schedule: {
+			"2025-06-02": [
+				{ type: "post", time: "9:15 AM", description: "Morning post about new collection" },
+				{ type: "story", time: "12:00 PM", description: "Lunch break story" },
+				{ type: "story", time: "6:30 PM", description: "Evening Q&A" }
+			],
+			// more dates...
+		}
 	},
 	{
 		id: 3,
@@ -93,6 +125,13 @@ export const influencers = [
 			{ month: "May", followers: 3.4 },
 			{ month: "Jun", followers: 3.5 },
 		],
+		schedule: {
+			"2025-06-02": [
+				{ type: "post", time: "9:15 AM", description: "Morning post about new collection" },
+				{ type: "story", time: "12:00 PM", description: "Lunch break story" },
+				{ type: "story", time: "6:30 PM", description: "Evening Q&A" }
+			],
+		}
 	},
 	{
 		id: 4,
@@ -112,6 +151,14 @@ export const influencers = [
 			{ month: "May", followers: 860 },
 			{ month: "Jun", followers: 890 },
 		],
+		schedule: {
+			"2025-06-02": [
+				{ type: "post", time: "9:15 AM", description: "Morning post about new collection" },
+				{ type: "story", time: "12:00 PM", description: "Lunch break story" },
+				{ type: "story", time: "6:30 PM", description: "Evening Q&A" }
+			],
+			// more dates...
+		}
 	},
 	{
 		id: 5,
@@ -131,6 +178,14 @@ export const influencers = [
 			{ month: "May", followers: 1.15 },
 			{ month: "Jun", followers: 1.2 },
 		],
+		schedule: {
+			"2025-06-02": [
+				{ type: "post", time: "9:15 AM", description: "Morning post about new collection" },
+				{ type: "story", time: "12:00 PM", description: "Lunch break story" },
+				{ type: "story", time: "6:30 PM", description: "Evening Q&A" }
+			],
+			// more dates...
+		}
 	},
 	{
 		id: 6,
@@ -150,5 +205,13 @@ export const influencers = [
 			{ month: "May", followers: 630 },
 			{ month: "Jun", followers: 650 },
 		],
+		schedule: {
+			"2025-06-02": [
+				{ type: "post", time: "9:15 AM", description: "Morning post about new collection" },
+				{ type: "story", time: "12:00 PM", description: "Lunch break story" },
+				{ type: "story", time: "6:30 PM", description: "Evening Q&A" }
+			],
+			// more dates...
+		}
 	},
 ];

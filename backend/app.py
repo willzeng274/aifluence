@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import asyncio
 
 from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from google import genai
@@ -22,6 +23,14 @@ load_dotenv()
 
 app = FastAPI(title="AI Influencer Manager API", version="2.0.0")
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 ig_manager = InstagramManager()
 
 STORAGE_DIR = Path("storage/files")
@@ -33,6 +42,8 @@ def create_influencer_wizard(
     wizard_data: schemas.OnboardingWizardRequest,
     db: Session = Depends(get_db)
 ):
+    print(wizard_data)
+    
     """Create influencer through onboarding wizard"""
     persona = {
         "background": wizard_data.background_info,
