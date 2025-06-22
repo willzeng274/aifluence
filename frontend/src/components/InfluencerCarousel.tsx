@@ -80,6 +80,7 @@ const InfluencerCarousel = ({
 		}
 	}, [onCardClick]);
 
+
 	useEffect(() => {
 		window.addEventListener("mousemove", handleDragging);
 		window.addEventListener("touchmove", handleDragging);

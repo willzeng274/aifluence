@@ -2,70 +2,69 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
-
+import { AnimatePresence, motion } from "framer-motion";
+import "simplebar-react/dist/simplebar.min.css";
 import Step1ChooseType, {
 	InfluencerType,
 } from "@/components/creation-flow/Step1_ChooseType";
 import Step2DefineIdentity from "@/components/creation-flow/Step2_DefineIdentity";
-import Step3SetSchedule from "@/components/creation-flow/Step3_SetSchedule";
+import Step2AvatarGeneration from "@/components/creation-flow/Step2_AvatarGeneration";
+import Step3SetSchedule from "@/components/creation-flow/Step3SetSchedule";
+import Step3CompanySchedule from "@/components/creation-flow/Step3_CompanySchedule";
 
 const WizardStep = ({ children }: { children: React.ReactNode }) => (
 	<motion.div
 		initial={{ opacity: 0, x: 50 }}
 		animate={{ opacity: 1, x: 0 }}
 		exit={{ opacity: 0, x: -50 }}
-		transition={{ duration: 0.5, ease: "easeInOut" }}
+		transition={{ duration: 0.3, ease: "easeInOut" }}
 		className='w-full'
 	>
 		{children}
 	</motion.div>
 );
 
+type FormData = {
+	influencerType?: InfluencerType;
+	identity?: any;
+	avatar?: { description: string; avatarUrl: string };
+	schedule?: any;
+};
+
 const CreateInfluencerPage = () => {
 	const router = useRouter();
 	const [step, setStep] = useState(1);
+	const [formData, setFormData] = useState<FormData>({});
 
-	// Form state
-	const [influencerType, setInfluencerType] = useState<InfluencerType | null>(
-		null
-	);
-	const [persona, setPersona] = useState("");
-	const [avatar, setAvatar] = useState("");
-	const [isGenerating, setIsGenerating] = useState(false);
-	const [scheduleData, setScheduleData] = useState(null);
-
-	const handleNext = () => setStep((s) => s + 1);
-	const handleBack = () => setStep((s) => s - 1);
+	const handleNext = () => setStep((prev) => prev + 1);
+	const handleBack = () => setStep((prev) => prev - 1);
 
 	const handleSelectType = (type: InfluencerType) => {
-		setInfluencerType(type);
+		setFormData({ ...formData, influencerType: type });
 		handleNext();
 	};
 
-	const handleGenerateAvatar = () => {
-		setIsGenerating(true);
-		// Simulate API call
-		setTimeout(() => {
-			// In a real app, this would be a URL from a generation service
-			const seed = new Date().getTime();
-			setAvatar(
-				`https://api.dicebear.com/7.x/personas/svg?seed=${seed}&backgroundColor=transparent`
-			);
-			setIsGenerating(false);
-		}, 1500);
+	const handleDefineIdentity = (data: any) => {
+		setFormData({ ...formData, identity: data });
+		handleNext();
 	};
 
-	const handleSubmit = (finalScheduleData: any) => {
-		setScheduleData(finalScheduleData);
-		console.log({
-			influencerType,
-			persona,
-			avatar,
-			schedule: finalScheduleData,
-		});
-		router.push("/");
+	const handleAvatarSubmit = (data: {
+		description: string;
+		avatarUrl: string;
+	}) => {
+		setFormData({ ...formData, avatar: data });
+		handleNext();
 	};
+
+	const handleSubmit = (data: any) => {
+		const finalData = { ...formData, schedule: data };
+		setFormData(finalData);
+		console.log("Final Influencer Data:", finalData);
+		handleNext();
+	};
+
+	const influencerType = formData.influencerType;
 
 	return (
 		<div className='min-h-screen w-full bg-[#111111] text-white flex items-center justify-center p-8 overflow-hidden'>
@@ -79,25 +78,56 @@ const CreateInfluencerPage = () => {
 							<Step1ChooseType onSelectType={handleSelectType} />
 						</WizardStep>
 					)}
-					{step === 2 && influencerType === "lifestyle" && (
+					{step === 2 && influencerType && (
 						<WizardStep key='step2'>
 							<Step2DefineIdentity
-								persona={persona}
-								setPersona={setPersona}
-								avatar={avatar}
-								isGenerating={isGenerating}
-								onGenerateAvatar={handleGenerateAvatar}
+								influencerType={influencerType}
 								onBack={handleBack}
-								onNext={handleNext}
+								onSubmit={handleDefineIdentity}
 							/>
 						</WizardStep>
 					)}
-					{step === 3 && influencerType === "lifestyle" && (
-						<WizardStep key='step3'>
+					{step === 3 && (
+						<WizardStep key='step3-avatar'>
+							<Step2AvatarGeneration
+								onBack={handleBack}
+								onSubmit={handleAvatarSubmit}
+							/>
+						</WizardStep>
+					)}
+					{step === 4 && influencerType === "lifestyle" && (
+						<WizardStep key='step4-lifestyle-schedule'>
 							<Step3SetSchedule
+								influencerType={influencerType}
 								onBack={handleBack}
 								onSubmit={handleSubmit}
 							/>
+						</WizardStep>
+					)}
+					{step === 4 && influencerType === "company" && (
+						<WizardStep key='step4-company-schedule'>
+							<Step3CompanySchedule
+								onBack={handleBack}
+								onSubmit={handleSubmit}
+							/>
+						</WizardStep>
+					)}
+					{step === 5 && (
+						<WizardStep key='step5'>
+							<div className='text-center'>
+								<h1 className='text-3xl font-bold'>
+									Setup Complete!
+								</h1>
+								<p className='text-white/50 mt-4'>
+									Your new influencer has been created.
+								</p>
+								<button
+									onClick={() => router.push("/")}
+									className='mt-8 px-8 py-3 bg-gradient-to-r from-orange-500 to-teal-500 rounded-lg font-semibold text-base hover:opacity-90 transition-opacity'
+								>
+									Back to Home
+								</button>
+							</div>
 						</WizardStep>
 					)}
 				</AnimatePresence>

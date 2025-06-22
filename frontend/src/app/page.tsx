@@ -1,16 +1,19 @@
 "use client";
 
 import InfluencerCarousel from "@/components/InfluencerCarousel";
-import { influencers } from "@/constants/influencers";
-import React, { useState } from "react";
+import { influencers as influencersData } from "@/constants/influencers";
+import React, { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import InfluencerDetailsSidebar from "@/components/InfluencerDetailsSidebar";
 import { useRouter } from "next/navigation";
 
 // Define influencer type for state
-type Influencer = (typeof influencers)[0];
+type Influencer = (typeof influencersData)[0];
 
 const Home = () => {
+	const [influencers, setInfluencers] =
+		useState<Influencer[]>(influencersData);
+
 	const [selectedInfluencer, setSelectedInfluencer] =
 		useState<Influencer | null>(null);
 	const [isExiting, setIsExiting] = useState(false);
@@ -37,6 +40,16 @@ const Home = () => {
 			router.push("/create");
 		}, 500); // Match animation duration
 	};
+
+	const handleFetchInfluencers = async () => {
+		// TODO: API_PLACEHOLDER_GET Fetch influencers from API
+		// const data = await response.json();
+		// setInfluencers(data);
+	};
+
+	useEffect(() => {
+		handleFetchInfluencers();
+	}, []);
 
 	return (
 		<main
