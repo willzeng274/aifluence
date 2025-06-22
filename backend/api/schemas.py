@@ -156,3 +156,6 @@ class LifestyleGenerateRequest(BaseModel):
     days: int = Field(default=30, ge=1, le=90)
     activities: Optional[List[str]] = None
     intensity: float = Field(default=0.5, ge=0, le=1)
+
+class ImageGenerateRequest(BaseModel):
+    prompt: str

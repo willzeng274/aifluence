@@ -1,10 +1,15 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
-import threading
+import os
+import uuid
+from dotenv import load_dotenv
+import asyncio
 
 from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
 from sqlalchemy.orm import Session
+
+from google import genai
 
 from database.models import get_db, Influencer, Video, Schedule, Sponsor, SponsorMatch, VideoStatus
 from api import schemas
@@ -12,6 +17,8 @@ from managers.instagram_manager import InstagramManager
 from managers.scheduler import video_scheduler
 from managers.ai_generator import ai_generator
 from utils.background_tasks import process_lifestyle_generation, process_bulk_schedule
+
+load_dotenv()
 
 app = FastAPI(title="AI Influencer Manager API", version="2.0.0")
 
@@ -340,6 +347,67 @@ def add_sponsor_to_video(
         "sponsor_id": sponsor.id,
         "updated": True
     }
+
+@app.post("/generate-image")
+async def generate_image(
+    request: schemas.ImageGenerateRequest,
+):
+    """Generate image using Gemini Image Generation"""
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="Gemini API key not configured")
+    
+    client = genai.Client(api_key=api_key)
+    
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            storage_path = Path("storage/images")
+            storage_path.mkdir(parents=True, exist_ok=True)
+            
+            response = await client.aio.models.generate_content(
+                model="gemini-2.0-flash-preview-image-generation",
+                contents=request.prompt,
+                config=genai.types.GenerateContentConfig(
+                  response_modalities=['TEXT', 'IMAGE']
+                )
+            )
+            
+            if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
+                for part in response.candidates[0].content.parts:
+                    if part.inline_data:
+                        image_data = part.inline_data.data
+                        mime_type = part.inline_data.mime_type
+                        
+                        ext = mime_type.split('/')[-1]
+                        if ext == 'jpeg':
+                            ext = 'jpg'
+                        
+                        filename = f"generated_{uuid.uuid4().hex}.{ext}"
+                        filepath = storage_path / filename
+                        
+                        with open(filepath, "wb") as f:
+                            f.write(image_data)
+                        
+                        return {"path": f"/storage/images/{filename}"}
+            error_message = "Model did not return an image."
+            if response.prompt_feedback and response.prompt_feedback.block_reason:
+                 error_message = f"Image generation blocked. Reason: {response.prompt_feedback.block_reason.name}"
+            elif hasattr(response, 'text') and response.text:
+                error_message += f" Response text: {response.text}"
+
+            break
+        except Exception as e:
+            error_details = str(e)
+            print(f"Attempt {attempt + 1} failed: {error_details}")
+            if attempt < max_retries - 1:
+                await asyncio.sleep(1)
+                continue
+            else:
+                raise HTTPException(status_code=500, detail=f"Image generation failed after {max_retries} attempts: {error_details}")
+
+    raise HTTPException(status_code=500, detail=error_message)
+
 
 @app.post("/schedule/bulk")
 def create_bulk_schedule(
