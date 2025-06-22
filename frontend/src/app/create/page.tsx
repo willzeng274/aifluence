@@ -8,6 +8,7 @@ import Step1ChooseType, {
 	InfluencerType,
 } from "@/components/creation-flow/Step1_ChooseType";
 import Step2DefineIdentity from "@/components/creation-flow/Step2_DefineIdentity";
+import Step2DefineAudience from "@/components/creation-flow/Step2_DefineAudience";
 import Step2AvatarGeneration from "@/components/creation-flow/Step2_AvatarGeneration";
 import Step3SetSchedule from "@/components/creation-flow/Step3SetSchedule";
 import Step3CompanySchedule from "@/components/creation-flow/Step3_CompanySchedule";
@@ -68,6 +69,11 @@ const CreateInfluencerPage = () => {
 	};
 
 	const handleDefineIdentity = (data: Partial<FormData>) => {
+		setFormData({ ...formData, ...data });
+		handleNext();
+	};
+
+	const handleDefineAudience = (data: Partial<FormData>) => {
 		setFormData({ ...formData, ...data });
 		handleNext();
 	};
@@ -163,24 +169,35 @@ const CreateInfluencerPage = () => {
 							/>
 						</WizardStep>
 					)}
-					{step === 3 && (
-						<WizardStep key='step3-avatar'>
+					{step === 3 && mode && (
+						<WizardStep key='step3-audience'>
+							<Step2DefineAudience
+								name={formData.name || ""}
+								tone={formData.tone || "casual"}
+								background_info={formData.background_info || ""}
+								onBack={handleBack}
+								onSubmit={handleDefineAudience}
+							/>
+						</WizardStep>
+					)}
+					{step === 4 && (
+						<WizardStep key='step4-avatar'>
 							<Step2AvatarGeneration
 								onBack={handleBack}
 								onSubmit={handleAvatarSubmit}
 							/>
 						</WizardStep>
 					)}
-					{step === 4 && (
-						<WizardStep key='step4-growth'>
+					{step === 5 && (
+						<WizardStep key='step5-growth'>
 							<Step3GrowthAndSocials
 								onBack={handleBack}
 								onSubmit={handleGrowthAndSocialsSubmit}
 							/>
 						</WizardStep>
 					)}
-					{step === 5 && mode === "lifestyle" && (
-						<WizardStep key='step5-lifestyle-schedule'>
+					{step === 6 && mode === "lifestyle" && (
+						<WizardStep key='step6-lifestyle-schedule'>
 							<Step3SetSchedule
 								influencerType={mode}
 								onBack={handleBack}
@@ -188,16 +205,16 @@ const CreateInfluencerPage = () => {
 							/>
 						</WizardStep>
 					)}
-					{step === 5 && mode === "company" && (
-						<WizardStep key='step5-company-schedule'>
+					{step === 6 && mode === "company" && (
+						<WizardStep key='step6-company-schedule'>
 							<Step3CompanySchedule
 								onBack={handleBack}
 								onSubmit={handleSubmit}
 							/>
 						</WizardStep>
 					)}
-					{step === 6 && (
-						<WizardStep key='step6'>
+					{step === 7 && (
+						<WizardStep key='step7'>
 							<div className='text-center'>
 								<h1 className='text-3xl font-bold'>
 									Setup Complete!
