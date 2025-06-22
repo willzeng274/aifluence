@@ -1,395 +1,419 @@
-import os
-import shutil
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
+from typing import List, Optional
+import threading
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
+from sqlalchemy.orm import Session
+
+from database.models import get_db, Influencer, Video, Schedule, Sponsor, SponsorMatch, VideoStatus
+from api import schemas
 from managers.instagram_manager import InstagramManager
+from managers.scheduler import video_scheduler
+from managers.ai_generator import ai_generator
+from utils.background_tasks import process_lifestyle_generation, process_bulk_schedule
 
-app = FastAPI(title="AI Influencer Manager", version="1.0.0")
+app = FastAPI(title="AI Influencer Manager API", version="2.0.0")
 
 ig_manager = InstagramManager()
 
 STORAGE_DIR = Path("storage/files")
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
-class AccountCreate(BaseModel):
-    username: str
-    password: str
 
-class UploadContent(BaseModel):
-    username: str
-    caption: str = ""
-
-class AccountStats(BaseModel):
-    username: str
-    follower_count: int
-    following_count: int
-    media_count: int
-    engagement_rate: float = 0.0
-    last_updated: str
-
-@app.post("/accounts")
-def create_account(account: AccountCreate):
-    """Add new AI influencer account"""
-    success, message = ig_manager.add_account(account.username, account.password)
-    if not success:
-        if "already exists" in message.lower():
-            status_code = 409
-        elif "challenge" in message.lower() or "verification" in message.lower():
-            status_code = 403
-        elif "rate limit" in message.lower() or "wait" in message.lower():
-            status_code = 429
-        elif "invalid credentials" in message.lower():
-            status_code = 401
-        else:
-            status_code = 400
-        
-        raise HTTPException(status_code=status_code, detail=message)
-    
-    return {"success": True, "username": account.username, "message": message}
-
-@app.get("/accounts")
-def list_accounts():
-    """List all AI influencer accounts"""
-    accounts = ig_manager.list_accounts()
-    return {"accounts": accounts}
-
-@app.get("/accounts/{username}")
-def get_account_info(username: str):
-    """Get account information and stats"""
-    info = ig_manager.get_account_info(username)
-    if not info:
-        raise HTTPException(status_code=404, detail="Account not found")
-    return info
-
-@app.post("/accounts/{username}/resume")
-def resume_account_session(username: str):
-    """Resume account session (load from saved session)"""
-    success, message = ig_manager.load_account(username)
-    if not success:
-        if "not found" in message.lower():
-            status_code = 404
-        elif "expired" in message.lower():
-            status_code = 401
-        else:
-            status_code = 400
-        raise HTTPException(status_code=status_code, detail=message)
-    return {"success": True, "message": message}
-
-@app.post("/upload/photo")
-async def upload_photo(
-    username: str = Form(...),
-    caption: str = Form(""),
-    file: UploadFile = File(...)
+@app.post("/sorcerer/init", response_model=schemas.Influencer)
+def create_influencer_wizard(
+    wizard_data: schemas.OnboardingWizardRequest,
+    db: Session = Depends(get_db)
 ):
-    """Upload photo for AI influencer"""
-    file_path = STORAGE_DIR / f"{username}_{datetime.now().timestamp()}_{file.filename}"
+    """Create influencer through onboarding wizard"""
+    persona = {
+        "background": wizard_data.background_info,
+        "goals": wizard_data.goals,
+        "tone": wizard_data.tone
+    }
     
-    try:
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        
-        media_id, message = ig_manager.upload_photo(username, str(file_path), caption)
-        
-        if not media_id:
-            os.remove(file_path)
-            if "session expired" in message.lower() or "login" in message.lower():
-                status_code = 401
-            elif "rate limit" in message.lower():
-                status_code = 429
-            else:
-                status_code = 400
-            raise HTTPException(status_code=status_code, detail=message)
-        
-        return {
-            "success": True,
-            "media_id": media_id,
-            "file_path": str(file_path),
-            "message": message
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        raise HTTPException(status_code=500, detail=f"File processing error: {str(e)}")
+    audience_targeting = {
+        "age_range": wizard_data.audience_age_range,
+        "gender": wizard_data.audience_gender,
+        "interests": wizard_data.audience_interests,
+        "region": wizard_data.audience_region
+    }
+    
+    db_influencer = Influencer(
+        name=wizard_data.name,
+        face_image_url=wizard_data.face_image_url,
+        persona=persona,
+        mode=wizard_data.mode,
+        audience_targeting=audience_targeting,
+        growth_phase_enabled=wizard_data.growth_phase_enabled,
+        growth_intensity=wizard_data.growth_intensity,
+        posting_frequency=wizard_data.posting_frequency
+    )
+    db.add(db_influencer)
+    db.commit()
+    db.refresh(db_influencer)
+    
+    if wizard_data.instagram_username and wizard_data.instagram_password:
+        success, message = ig_manager.add_account(
+            wizard_data.instagram_username, 
+            wizard_data.instagram_password
+        )
+        if success:
+            from database.models import InstagramAccount
+            ig_account = db.query(InstagramAccount).filter(
+                InstagramAccount.username == wizard_data.instagram_username
+            ).first()
+            if ig_account:
+                ig_account.influencer_id = db_influencer.id
+                db.commit()
+    
+    return db_influencer
 
-@app.post("/upload/video")
-async def upload_video(
-    username: str = Form(...),
-    caption: str = Form(""),
-    file: UploadFile = File(...)
+@app.get("/influencers", response_model=List[schemas.Influencer])
+def list_influencers(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
 ):
-    """Upload video/reel for AI influencer"""
-    file_path = STORAGE_DIR / f"{username}_{datetime.now().timestamp()}_{file.filename}"
-    
-    try:
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        
-        media_id, message = ig_manager.upload_video(username, str(file_path), caption)
-        
-        if not media_id:
-            os.remove(file_path)
-            if "session expired" in message.lower() or "login" in message.lower():
-                status_code = 401
-            elif "rate limit" in message.lower():
-                status_code = 429
-            else:
-                status_code = 400
-            raise HTTPException(status_code=status_code, detail=message)
-        
-        return {
-            "success": True,
-            "media_id": media_id,
-            "file_path": str(file_path),
-            "message": message
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        raise HTTPException(status_code=500, detail=f"File processing error: {str(e)}")
+    """List user's influencers"""
+    influencers = db.query(Influencer).offset(skip).limit(limit).all()
+    return influencers
 
-@app.post("/upload/story")
-async def upload_story(
-    username: str = Form(...),
-    file: UploadFile = File(...)
+@app.get("/influencer/{influencer_id}", response_model=schemas.Influencer)
+def get_influencer(
+    influencer_id: int,
+    db: Session = Depends(get_db)
 ):
-    """Upload story for AI influencer"""
-    file_path = STORAGE_DIR / f"{username}_story_{datetime.now().timestamp()}_{file.filename}"
-    
-    try:
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        
-        media_id, message = ig_manager.upload_story(username, str(file_path))
-        
-        if not media_id:
-            os.remove(file_path)
-            if "session expired" in message.lower() or "login" in message.lower():
-                status_code = 401
-            elif "rate limit" in message.lower():
-                status_code = 429
-            else:
-                status_code = 400
-            raise HTTPException(status_code=status_code, detail=message)
-        
-        return {
-            "success": True,
-            "media_id": media_id,
-            "file_path": str(file_path),
-            "message": message
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        raise HTTPException(status_code=500, detail=f"File processing error: {str(e)}")
+    """Get specific influencer details"""
+    influencer = db.query(Influencer).filter(
+        Influencer.id == influencer_id
+    ).first()
+    if not influencer:
+        raise HTTPException(status_code=404, detail="Influencer not found")
+    return influencer
 
-@app.get("/files/{filename}")
-def get_file(filename: str):
-    """Get stored file"""
-    file_path = STORAGE_DIR / filename
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="File not found")
-    return FileResponse(file_path)
-
-@app.get("/analytics/{username}")
-def get_performance_analytics(username: str):
-    """Get AI influencer performance analytics"""
-    ig_manager.update_account_stats(username)
+@app.get("/influencer/{influencer_id}/videos")
+def get_influencer_videos(
+    influencer_id: int,
+    include_past: bool = False,
+    db: Session = Depends(get_db)
+):
+    """Get all scheduled videos for an influencer"""
+    influencer = db.query(Influencer).filter(
+        Influencer.id == influencer_id
+    ).first()
+    if not influencer:
+        raise HTTPException(status_code=404, detail="Influencer not found")
     
-    info = ig_manager.get_account_info(username)
-    if not info:
-        raise HTTPException(status_code=404, detail="Account not found")
+    # Query videos with their schedules
+    query = db.query(Video, Schedule).join(
+        Schedule, Video.id == Schedule.video_id
+    ).filter(
+        Video.influencer_id == influencer_id
+    ).order_by(Schedule.run_at)
     
-    engagement_rate = 0.0
-    if info['follower_count'] > 0:
-        engagement_rate = (info['media_count'] * 50) / info['follower_count'] * 100
+    if not include_past:
+        query = query.filter(Schedule.run_at >= datetime.now())
+    
+    results = query.all()
+    
+    videos_data = []
+    for video, schedule in results:
+        videos_data.append({
+            "video_id": video.id,
+            "schedule_id": schedule.id,
+            "scheduled_time": schedule.run_at.isoformat(),
+            "content_type": video.content_type,
+            "status": video.status.value,
+            "caption": video.caption,
+            "hashtags": video.hashtags,
+            "is_active": schedule.is_active,
+            "has_sponsor": video.sponsor_id is not None
+        })
     
     return {
-        "username": username,
-        "followers": info['follower_count'],
-        "following": info['following_count'],
-        "posts": info['media_count'],
-        "engagement_rate": round(engagement_rate, 2),
-        "growth_metrics": {
-            "followers_growth": "N/A",
-            "posts_this_month": "N/A"
-        },
-        "last_updated": info['created_at']
+        "influencer_id": influencer_id,
+        "influencer_name": influencer.name,
+        "total_scheduled": len(videos_data),
+        "videos": videos_data
     }
 
-@app.delete("/accounts/{username}")
-def remove_account(username: str):
-    """Remove AI influencer account"""
-    success = ig_manager.remove_account(username)
+@app.post("/schedule", response_model=schemas.Schedule)
+def schedule_video(
+    schedule_data: schemas.ScheduleCreate,
+    db: Session = Depends(get_db)
+):
+    """Schedule a video for an influencer"""
+    influencer = db.query(Influencer).filter(
+        Influencer.id == schedule_data.video_params.influencer_id
+    ).first()
+    if not influencer:
+        raise HTTPException(status_code=404, detail="Influencer not found")
+    
+    db_video = Video(
+        influencer_id=schedule_data.video_params.influencer_id,
+        sponsor_id=schedule_data.video_params.sponsor_id,
+        scheduled_time=schedule_data.video_params.scheduled_time,
+        script=schedule_data.video_params.script,
+        caption=schedule_data.video_params.caption,
+        hashtags=schedule_data.video_params.hashtags,
+        platform=schedule_data.video_params.platform
+    )
+    db.add(db_video)
+    db.commit()
+    db.refresh(db_video)
+    
+    db_schedule = Schedule(
+        video_id=db_video.id,
+        run_at=schedule_data.run_at,
+        recurrence_rule=schedule_data.recurrence_rule,
+        is_active=schedule_data.is_active
+    )
+    db.add(db_schedule)
+    db.commit()
+    db.refresh(db_schedule)
+
+    job_id = video_scheduler.schedule_video(
+        db_schedule.id,
+        db_schedule.run_at,
+        db_schedule.recurrence_rule
+    )
+    
+    db_schedule.job_id = job_id
+    db.commit()
+    
+    return db_schedule
+
+@app.post("/generate/lifestyle")
+def generate_lifestyle_schedule(
+    request: schemas.LifestyleGenerateRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    """Generate AI lifestyle schedule for influencer (async)"""
+    influencer = db.query(Influencer).filter(
+        Influencer.id == request.influencer_id
+    ).first()
+    if not influencer:
+        raise HTTPException(status_code=404, detail="Influencer not found")
+    
+    background_tasks.add_task(
+        process_lifestyle_generation,
+        request.influencer_id,
+        request.days,
+        request.intensity
+    )
+    
+    return {
+        "message": "Lifestyle timeline generation started",
+        "influencer_id": influencer.id,
+        "days": request.days,
+        "status": "processing"
+    }
+
+@app.post("/create")
+def trigger_video_generation(
+    video_id: int,
+    db: Session = Depends(get_db)
+):
+    """Trigger video generation pipeline"""
+    video = db.query(Video).filter(
+        Video.id == video_id
+    ).first()
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+    
+    if not video.script:
+        influencer = db.query(Influencer).filter(Influencer.id == video.influencer_id).first()
+        script_data = ai_generator.generate_script(influencer.persona)
+        video.script = script_data["full_script"]
+        video.caption = ai_generator.generate_caption(script_data)
+    
+    storyboard = ai_generator.generate_storyboard(
+        {"full_script": video.script}
+    )
+    video.storyboard = storyboard
+    
+    video.status = VideoStatus.PROCESSING
+    db.commit()
+
+    video.video_url = f"/files/generated_video_{video.id}.mp4"
+    video.thumbnail_url = f"/files/thumbnail_{video.id}.jpg"
+    video.status = VideoStatus.POSTED
+    db.commit()
+    
+    return {
+        "video_id": video.id,
+        "status": video.status.value,
+        "video_url": video.video_url,
+        "thumbnail_url": video.thumbnail_url
+    }
+
+@app.post("/sponsors", response_model=schemas.Sponsor)
+def create_sponsor(
+    sponsor: schemas.SponsorCreate,
+    db: Session = Depends(get_db)
+):
+    """Create a new sponsor"""
+    db_sponsor = Sponsor(
+        **sponsor.model_dump()
+    )
+    db.add(db_sponsor)
+    db.commit()
+    db.refresh(db_sponsor)
+    return db_sponsor
+
+@app.post("/sponsor/match")
+def match_sponsor_influencer(
+    match_data: schemas.SponsorMatchCreate,
+    db: Session = Depends(get_db)
+):
+    """Create sponsor-influencer match"""
+    influencer = db.query(Influencer).filter(
+        Influencer.id == match_data.influencer_id
+    ).first()
+    if not influencer:
+        raise HTTPException(status_code=404, detail="Influencer not found")
+    
+    sponsor = db.query(Sponsor).filter(Sponsor.id == match_data.sponsor_id).first()
+    if not sponsor:
+        raise HTTPException(status_code=404, detail="Sponsor not found")
+    
+    match_score = 0.5
+    if sponsor.targeting_tags and influencer.audience_targeting:
+        if influencer.audience_targeting.get("interests"):
+            common_interests = set(sponsor.targeting_tags) & set(influencer.audience_targeting["interests"])
+            match_score += len(common_interests) * 0.1
+    
+    db_match = SponsorMatch(
+        influencer_id=match_data.influencer_id,
+        sponsor_id=match_data.sponsor_id,
+        match_score=min(match_score, 1.0),
+        proposal_details=match_data.proposal_details
+    )
+    db.add(db_match)
+    db.commit()
+    db.refresh(db_match)
+    
+    return {
+        "match_id": db_match.id,
+        "match_score": db_match.match_score,
+        "status": db_match.status.value
+    }
+
+@app.post("/video/{video_id}/add-sponsor")
+def add_sponsor_to_video(
+    video_id: int,
+    sponsor_id: int,
+    db: Session = Depends(get_db)
+):
+    """Add sponsor to existing video"""
+    video = db.query(Video).filter(
+        Video.id == video_id
+    ).first()
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+    
+    sponsor = db.query(Sponsor).filter(Sponsor.id == sponsor_id).first()
+    if not sponsor:
+        raise HTTPException(status_code=404, detail="Sponsor not found")
+    
+    video.sponsor_id = sponsor_id
+    
+    if video.status == VideoStatus.PENDING:
+        influencer = db.query(Influencer).filter(Influencer.id == video.influencer_id).first()
+        script_data = ai_generator.generate_script(
+            influencer.persona,
+            sponsor_info={
+                "company_name": sponsor.company_name,
+                "product_info": sponsor.product_info
+            }
+        )
+        video.script = script_data["full_script"]
+        video.caption = ai_generator.generate_caption(script_data)
+    
+    db.commit()
+    
+    return {
+        "video_id": video.id,
+        "sponsor_id": sponsor.id,
+        "updated": True
+    }
+
+@app.post("/schedule/bulk")
+def create_bulk_schedule(
+    request: schemas.BulkScheduleCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    """Create bulk schedule from weekly pattern"""
+    influencer = db.query(Influencer).filter(
+        Influencer.id == request.influencer_id
+    ).first()
+    if not influencer:
+        raise HTTPException(status_code=404, detail="Influencer not found")
+    
+    background_tasks.add_task(
+        process_bulk_schedule,
+        request.influencer_id,
+        request.schedule_pattern.model_dump(),
+        request.start_date,
+        request.end_date
+    )
+    
+    return {
+        "message": "Bulk schedule creation started",
+        "influencer_id": influencer.id,
+        "start_date": request.start_date.isoformat(),
+        "end_date": request.end_date.isoformat(),
+        "status": "processing"
+    }
+
+@app.post("/accounts")
+def create_account(
+    username: str,
+    password: str,
+    influencer_id: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    """Add Instagram account to influencer"""
+    success, message = ig_manager.add_account(username, password)
     if not success:
-        raise HTTPException(status_code=404, detail="Account not found")
-    return {"success": True, "message": "Account removed"}
+        raise HTTPException(status_code=400, detail=message)
+
+    if influencer_id:
+        from database.models import InstagramAccount
+        influencer = db.query(Influencer).filter(
+            Influencer.id == influencer_id
+        ).first()
+        if influencer:
+            ig_account = db.query(InstagramAccount).filter(
+                InstagramAccount.username == username
+            ).first()
+            if ig_account:
+                ig_account.influencer_id = influencer_id
+                db.commit()
+    
+    return {"success": True, "username": username, "message": message}
 
 @app.get("/")
 def root():
     return {
         "name": "AI Influencer Manager API",
-        "version": "1.0.0",
-        "accounts": len(ig_manager.list_accounts()),
-        "endpoints": {
-            "POST /accounts": "Add new AI influencer account",
-            "GET /accounts": "List all accounts", 
-            "GET /accounts/{username}": "Get account info",
-            "POST /accounts/{username}/resume": "Resume saved session",
-            "POST /upload/photo": "Upload photo (form: username, caption, file)",
-            "POST /upload/video": "Upload video (form: username, caption, file)", 
-            "POST /upload/story": "Upload story (form: username, file)",
-            "GET /analytics/{username}": "Get performance analytics",
-            "GET /files/{filename}": "Access stored files",
-            "DELETE /accounts/{username}": "Remove account",
-            "GET /docs": "Full API documentation"
-        }
-    }
-
-@app.get("/docs")
-def get_docs():
-    return {
-        "title": "AI Influencer Manager API Documentation",
-        "endpoints": [
-            {
-                "method": "POST",
-                "path": "/accounts",
-                "description": "Add new AI influencer account",
-                "body": {"username": "string", "password": "string"},
-                "responses": {
-                    "200": {"success": True, "username": "string", "message": "string"},
-                    "401": "Invalid credentials",
-                    "403": "Challenge required", 
-                    "409": "Account already exists",
-                    "429": "Rate limited"
-                }
-            },
-            {
-                "method": "GET", 
-                "path": "/accounts",
-                "description": "List all AI influencer accounts",
-                "responses": {
-                    "200": {"accounts": ["username1", "username2"]}
-                }
-            },
-            {
-                "method": "GET",
-                "path": "/accounts/{username}",
-                "description": "Get account information and stats",
-                "responses": {
-                    "200": {
-                        "username": "string",
-                        "full_name": "string", 
-                        "follower_count": "int",
-                        "following_count": "int",
-                        "media_count": "int",
-                        "is_active": "bool"
-                    },
-                    "404": "Account not found"
-                }
-            },
-            {
-                "method": "POST",
-                "path": "/accounts/{username}/resume", 
-                "description": "Resume saved session",
-                "responses": {
-                    "200": {"success": True, "message": "Session loaded successfully"},
-                    "401": "Session expired",
-                    "404": "Account not found"
-                }
-            },
-            {
-                "method": "POST",
-                "path": "/upload/photo",
-                "description": "Upload photo for AI influencer",
-                "form_data": {
-                    "username": "string",
-                    "caption": "string (optional)",
-                    "file": "image file"
-                },
-                "responses": {
-                    "200": {"success": True, "media_id": "string", "file_path": "string"},
-                    "401": "Session expired",
-                    "429": "Rate limited"
-                }
-            },
-            {
-                "method": "POST", 
-                "path": "/upload/video",
-                "description": "Upload video/reel for AI influencer",
-                "form_data": {
-                    "username": "string",
-                    "caption": "string (optional)", 
-                    "file": "video file"
-                },
-                "responses": {
-                    "200": {"success": True, "media_id": "string", "file_path": "string"},
-                    "401": "Session expired",
-                    "429": "Rate limited"
-                }
-            },
-            {
-                "method": "POST",
-                "path": "/upload/story",
-                "description": "Upload story for AI influencer", 
-                "form_data": {
-                    "username": "string",
-                    "file": "image or video file"
-                },
-                "responses": {
-                    "200": {"success": True, "media_id": "string", "file_path": "string"},
-                    "401": "Session expired",
-                    "429": "Rate limited"
-                }
-            },
-            {
-                "method": "GET",
-                "path": "/analytics/{username}",
-                "description": "Get AI influencer performance analytics",
-                "responses": {
-                    "200": {
-                        "username": "string",
-                        "followers": "int",
-                        "following": "int", 
-                        "posts": "int",
-                        "engagement_rate": "float",
-                        "growth_metrics": {}
-                    },
-                    "404": "Account not found"
-                }
-            },
-            {
-                "method": "GET",
-                "path": "/files/{filename}",
-                "description": "Access stored files",
-                "responses": {
-                    "200": "File content",
-                    "404": "File not found"
-                }
-            },
-            {
-                "method": "DELETE",
-                "path": "/accounts/{username}",
-                "description": "Remove AI influencer account", 
-                "responses": {
-                    "200": {"success": True, "message": "Account removed"},
-                    "404": "Account not found"
-                }
-            }
+        "version": "2.0.0",
+        "features": [
+            "AI influencer persona management",
+            "Automated content scheduling",
+            "AI-powered script and lifestyle generation",
+            "Sponsor management and matching",
+            "Instagram integration"
         ],
-        "examples": {
-            "add_account": "curl -X POST 'http://localhost:8000/accounts' -H 'Content-Type: application/json' -d '{\"username\": \"your_username\", \"password\": \"your_password\"}'",
-            "upload_photo": "curl -X POST 'http://localhost:8000/upload/photo' -F 'username=your_username' -F 'caption=Hello World!' -F 'file=@photo.jpg'",
-            "get_analytics": "curl -X GET 'http://localhost:8000/analytics/your_username'"
+        "endpoints": {
+            "influencer": ["/sorcerer/init", "/influencers", "/influencer/{id}"],
+            "scheduling": ["/schedule", "/generate/lifestyle", "/create"],
+            "sponsors": ["/sponsors", "/sponsor/match", "/video/{id}/add-sponsor"],
+            "legacy": ["/accounts", "/upload/*", "/analytics/*"]
         }
     }
 
