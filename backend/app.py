@@ -13,12 +13,25 @@ from sqlalchemy.orm import Session
 
 from google import genai
 
-from database.models import get_db, Influencer, Video, Schedule, Sponsor, SponsorMatch, VideoStatus, InfluencerMode
+from database.models import (
+    get_db,
+    Influencer,
+    Video,
+    Schedule,
+    Sponsor,
+    SponsorMatch,
+    VideoStatus,
+    InfluencerMode,
+)
 from api import schemas
 from managers.instagram_manager import InstagramManager
 from managers.scheduler import video_scheduler
 from managers.ai_generator import ai_generator
-from utils.background_tasks import process_interval_schedule, process_dated_schedule, plan_and_schedule_from_life_story
+from utils.background_tasks import (
+    process_interval_schedule,
+    process_dated_schedule,
+    plan_and_schedule_from_life_story,
+)
 
 load_dotenv()
 
@@ -41,6 +54,100 @@ STORAGE_DIR = Path("storage/files")
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
 
+# NOTE: The following function is a placeholder for a real AI implementation
+# and would ideally live in the `managers.ai_generator` module.
+def update_life_story_if_significant_mock(
+    current_life_story: str, event_description: str
+) -> tuple[str, bool]:
+    """
+    (Mock) Uses AI to determine if an event is significant and, if so, updates the life story.
+
+    In a real implementation, a sophisticated LLM would analyze the new post's content
+    to determine its impact on the influencer's life story. This mock function
+    simulates a scenario where the LLM always deems the new event significant enough
+    to warrant a narrative update, triggering a full content regeneration.
+
+    Returns the new life story and a boolean indicating that it was changed.
+    """
+    # This simulates the LLM deciding the event is always significant.
+    updated_story = f"{current_life_story}\\n\\n**Recent Event:** On {datetime.now().strftime('%Y-%m-%d')}, a notable event occurred: {event_description}"
+    return updated_story, True
+
+
+ai_generator.update_life_story_if_significant = update_life_story_if_significant_mock
+
+
+def process_lifestyle_post_update(
+    influencer_id: int, event_description: str, trigger_video_id: int
+):
+    """
+    Background task to potentially update life story and regenerate content schedule
+    for a lifestyle influencer after a new post.
+    """
+    db = next(get_db())
+    try:
+        influencer = db.query(Influencer).filter(Influencer.id == influencer_id).first()
+        if not influencer or not influencer.life_story:
+            print(f"Influencer {influencer_id} not found or not a lifestyle account.")
+            return
+
+        print(f"Processing new post for {influencer.name}: {event_description}")
+
+        # 1. Update life story if AI deems event significant
+        (
+            updated_story,
+            was_updated,
+        ) = ai_generator.update_life_story_if_significant(
+            influencer.life_story, event_description
+        )
+
+        if not was_updated:
+            print(
+                f"Event not deemed significant for {influencer.name}. No content regeneration needed."
+            )
+            return
+
+        influencer.life_story = updated_story
+        db.commit()
+        db.refresh(influencer)
+        print(f"Updated life story for {influencer.name}.")
+
+        # 2. Clear upcoming scheduled posts
+        now = datetime.now()
+        future_schedules = (
+            db.query(Schedule)
+            .join(Video, Video.id == Schedule.video_id)
+            .filter(Video.influencer_id == influencer_id)
+            .filter(Schedule.run_at > now)
+            .all()
+        )
+
+        for schedule in future_schedules:
+            if schedule.video_id == trigger_video_id:
+                continue  # Don't delete the post that triggered this update
+
+            print(f"Unscheduling and deleting old post {schedule.video_id}")
+            if schedule.job_id:
+                video_scheduler.unschedule_video(schedule.job_id)
+
+            video_to_delete = (
+                db.query(Video).filter(Video.id == schedule.video_id).first()
+            )
+            db.delete(schedule)
+            if video_to_delete:
+                db.delete(video_to_delete)
+
+        db.commit()
+        print("Cleared future posts.")
+
+        # 3. Regenerate schedule
+        plan_and_schedule_from_life_story(influencer.id, days_to_plan=30)
+        print(f"Triggered content regeneration for {influencer.name}.")
+
+    finally:
+        db.close()
+
+
 @app.post("/sorcerer/init", response_model=schemas.Influencer)
 def create_influencer_wizard(
     wizard_data: schemas.OnboardingWizardRequest,
@@ -55,7 +162,7 @@ def create_influencer_wizard(
         "goals": wizard_data.goals,
         "tone": wizard_data.tone,
     }
-    
+
     life_story = None
     if wizard_data.mode == InfluencerMode.LIFESTYLE:
         life_story = ai_generator.generate_life_story(wizard_data.name, persona)
@@ -87,13 +194,13 @@ def create_influencer_wizard(
     db.refresh(db_influencer)
 
     success, _message = ig_manager.add_account(
-        wizard_data.instagram_username,
-        wizard_data.instagram_password,
-        db_influencer.id
+        wizard_data.instagram_username, wizard_data.instagram_password, db_influencer.id
     )
     if not success:
-        print(f"Warning: Could not link Instagram account for {wizard_data.name}. Error: {_message}")
-    
+        print(
+            f"Warning: Could not link Instagram account for {wizard_data.name}. Error: {_message}"
+        )
+
     if wizard_data.posting_frequency and wizard_data.mode == InfluencerMode.COMPANY:
         background_tasks.add_task(
             process_interval_schedule,
@@ -103,13 +210,17 @@ def create_influencer_wizard(
             wizard_data.posting_frequency.story_interval_hours,
         )
     elif wizard_data.mode == InfluencerMode.LIFESTYLE:
-        days_to_plan = wizard_data.lifestyle_planning.days_to_plan if wizard_data.lifestyle_planning else 30 # for now
+        days_to_plan = (
+            wizard_data.lifestyle_planning.days_to_plan
+            if wizard_data.lifestyle_planning
+            else 30
+        )  # for now
         background_tasks.add_task(
             plan_and_schedule_from_life_story,
             db_influencer.id,
-            days_to_plan=days_to_plan
+            days_to_plan=days_to_plan,
         )
-    
+
     return db_influencer
 
 
@@ -176,7 +287,9 @@ def get_influencer_videos(
 
 @app.post("/schedule", response_model=schemas.Schedule)
 def schedule_video(
-    schedule_data: schemas.ScheduleCreate, db: Session = Depends(get_db)
+    schedule_data: schemas.ScheduleCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
 ):
     """Schedule a video for an influencer"""
     influencer = (
@@ -218,6 +331,18 @@ def schedule_video(
 
     db_schedule.job_id = job_id
     db.commit()
+
+    if (
+        influencer.mode == InfluencerMode.LIFESTYLE
+        and schedule_data.video_params.caption
+    ):
+        caption = schedule_data.video_params.caption
+        background_tasks.add_task(
+            process_lifestyle_post_update,
+            influencer.id,
+            caption,
+            db_video.id,
+        )
 
     return db_schedule
 

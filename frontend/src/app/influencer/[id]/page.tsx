@@ -456,8 +456,8 @@ const InfluencerProfilePage = () => {
 					}
 				}
 				.animate-reveal {
-					animation: reveal 0.8s
-						cubic-bezier(0.22, 1, 0.36, 1) forwards;
+					animation: reveal 0.8s cubic-bezier(0.22, 1, 0.36, 1)
+						forwards;
 					opacity: 0;
 				}
 			`}</style>
@@ -466,6 +466,3 @@ const InfluencerProfilePage = () => {
 };
 
 export default InfluencerProfilePage;
-
-
-
