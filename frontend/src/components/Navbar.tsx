@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 
 const HomeIcon = (props: React.SVGProps<SVGSVGElement>) => (
 	<svg
@@ -33,6 +34,24 @@ const UserIcon = (props: React.SVGProps<SVGSVGElement>) => (
 	>
 		<path d='M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2' />
 		<circle cx='12' cy='7' r='4' />
+	</svg>
+);
+
+const BriefcaseIcon = (props: React.SVGProps<SVGSVGElement>) => (
+	<svg
+		xmlns='http://www.w3.org/2000/svg'
+		width='24'
+		height='24'
+		viewBox='0 0 24 24'
+		fill='none'
+		stroke='currentColor'
+		strokeWidth='1.5'
+		strokeLinecap='round'
+		strokeLinejoin='round'
+		{...props}
+	>
+		<rect x='2' y='7' width='20' height='14' rx='2' ry='2'></rect>
+		<path d='M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16'></path>
 	</svg>
 );
 
@@ -75,15 +94,16 @@ const PlusIcon = (props: React.SVGProps<SVGSVGElement>) => (
 const Navbar = ({ onAddClick }: { onAddClick: () => void }) => {
 	return (
 		<nav className='absolute top-1/2 left-6 -translate-y-1/2 z-20 flex flex-col gap-3'>
-			<button className='w-12 h-12 flex items-center justify-center bg-black/30 backdrop-blur-md border border-white/10 rounded-xl text-white/80 hover:bg-white/20 hover:text-white transition-all'>
-				<HomeIcon className='w-6 h-6' />
-			</button>
-			<button className='w-12 h-12 flex items-center justify-center bg-black/30 backdrop-blur-md border border-white/10 rounded-xl text-white/50 hover:bg-white/20 hover:text-white transition-all'>
-				<UserIcon className='w-6 h-6' />
-			</button>
-			<button className='w-12 h-12 flex items-center justify-center bg-black/30 backdrop-blur-md border border-white/10 rounded-xl text-white/50 hover:bg-white/20 hover:text-white transition-all'>
-				<SettingsIcon className='w-6 h-6' />
-			</button>
+			<Link href='/' passHref>
+				<button className='w-12 h-12 flex items-center justify-center bg-black/30 backdrop-blur-md border border-white/10 rounded-xl text-white/80 hover:bg-white/20 hover:text-white transition-all'>
+					<HomeIcon className='w-6 h-6' />
+				</button>
+			</Link>
+			<Link href='/sponsors' passHref>
+				<button className='w-12 h-12 flex items-center justify-center bg-black/30 backdrop-blur-md border border-white/10 rounded-xl text-white/50 hover:bg-white/20 hover:text-white transition-all'>
+					<BriefcaseIcon className='w-6 h-6' />
+				</button>
+			</Link>
 			<div className='h-[1px] w-8 my-2 bg-white/10 self-center'></div>
 			<button
 				onClick={onAddClick}

@@ -16,6 +16,7 @@ from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
 import os
 import enum
+import pathlib
 
 Base = declarative_base()
 
@@ -122,13 +123,12 @@ class Sponsor(Base):
     __tablename__ = "sponsors"
 
     id = Column(Integer, primary_key=True, index=True)
-    company_name = Column(String(255), nullable=False)
-    brand_logo_url = Column(String(500), nullable=True)
-    contact_email = Column(String(255), nullable=True)
-    contact_phone = Column(String(50), nullable=True)
+    name = Column(String(255), nullable=False)
+    website = Column(String(500), nullable=True)
+    industry = Column(String(255), nullable=True)
+    sponsorship_tier = Column(String(50), nullable=True)
+    status = Column(String(50), nullable=True)
     targeting_tags = Column(JSON, nullable=True)
-    product_info = Column(JSON, nullable=True)
-    campaign_details = Column(JSON, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -153,9 +153,14 @@ class SponsorMatch(Base):
     sponsor = relationship("Sponsor", back_populates="sponsor_matches")
 
 
-DATABASE_URL = "sqlite:///./storage/accounts.db"
+# Get the directory of the current file (i.e., backend/database)
+_current_dir = pathlib.Path(__file__).parent
+# Get the backend directory, then create a 'storage' directory inside it
+_storage_dir = _current_dir.parent / "storage"
+_storage_dir.mkdir(exist_ok=True)
 
-os.makedirs("storage", exist_ok=True)
+# Construct the absolute path to the database file
+DATABASE_URL = f"sqlite:///{_storage_dir.joinpath('accounts.db')}"
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

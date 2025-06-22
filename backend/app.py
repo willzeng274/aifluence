@@ -42,7 +42,7 @@ app.add_middleware(
     # allow_origins=["http://localhost:3000"],
     allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -70,7 +70,7 @@ def update_life_story_if_significant_mock(
     Returns the new life story and a boolean indicating that it was changed.
     """
     # This simulates the LLM deciding the event is always significant.
-    updated_story = f"{current_life_story}\\n\\n**Recent Event:** On {datetime.now().strftime('%Y-%m-%d')}, a notable event occurred: {event_description}"
+    updated_story = f"{current_life_story}\n\n{event_description}"
     return updated_story, True
 
 
@@ -456,6 +456,13 @@ def create_sponsor(sponsor: schemas.SponsorCreate, db: Session = Depends(get_db)
     return db_sponsor
 
 
+@app.get("/sponsors", response_model=List[schemas.Sponsor])
+def list_sponsors(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    """List all sponsors"""
+    sponsors = db.query(Sponsor).offset(skip).limit(limit).all()
+    return sponsors
+
+
 @app.post("/sponsor/match")
 def match_sponsor_influencer(
     match_data: schemas.SponsorMatchCreate, db: Session = Depends(get_db)
@@ -619,11 +626,65 @@ def root():
             "influencer": ["/sorcerer/init", "/influencers", "/influencer/{id}"],
             "scheduling": ["/schedule", "/schedule/interval", "/schedule/bulk"],
             "video_generation": ["/video/generate"],
-            "sponsors": ["/sponsors", "/sponsor/match", "/video/{id}/add-sponsor"],
+            "divine_intervention": ["/influencer/{id}/divine-intervention"],
+            "sponsors": [
+                "/sponsors",
+                "/sponsor/match",
+                "/video/{id}/add-sponsor",
+            ],
             "image generation": ["/generate-image"],
             # "legacy": ["/accounts", "/upload/*", "/analytics/*"],
         },
     }
+
+
+@app.post("/influencer/{influencer_id}/divine-intervention")
+def divine_intervention(
+    influencer_id: int,
+    request: schemas.DivineInterventionRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    """
+    Triggers a divine intervention, rewriting the influencer's life story
+    and regenerating their content schedule.
+    """
+    influencer = db.query(Influencer).filter(Influencer.id == influencer_id).first()
+    if not influencer or influencer.mode != InfluencerMode.LIFESTYLE:
+        raise HTTPException(status_code=404, detail="Lifestyle influencer not found")
+
+    # 1. Rewrite the life story using AI
+    updated_story = ai_generator.rewrite_life_story(
+        influencer.life_story, request.event_description, request.intensity
+    )
+    influencer.life_story = updated_story
+    db.commit()
+
+    # 2. Clear all future posts
+    now = datetime.now()
+    future_schedules = (
+        db.query(Schedule)
+        .join(Video, Video.id == Schedule.video_id)
+        .filter(Video.influencer_id == influencer_id)
+        .filter(Schedule.run_at > now)
+        .all()
+    )
+    for schedule in future_schedules:
+        if schedule.job_id:
+            video_scheduler.cancel_schedule(schedule.job_id)
+        video_to_delete = db.query(Video).filter(Video.id == schedule.video_id).first()
+        db.delete(schedule)
+        if video_to_delete:
+            db.delete(video_to_delete)
+    db.commit()
+    print(f"Cleared {len(future_schedules)} future posts for divine intervention.")
+
+    # 3. Trigger background task to regenerate content from the new story
+    background_tasks.add_task(
+        plan_and_schedule_from_life_story, influencer.id, days_to_plan=30
+    )
+
+    return {"message": "The heavens have spoken. A new destiny is being written."}
 
 
 if __name__ == "__main__":

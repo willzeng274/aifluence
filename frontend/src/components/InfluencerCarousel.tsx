@@ -159,7 +159,7 @@ const InfluencerCarousel = ({
 									handleDragStart(e, influencer)
 								}
 							>
-								<div className='relative w-full h-full rounded-3xl overflow-hidden bg-black/20 backdrop-blur-lg border border-white/10 shadow-2xl'>
+								<div className='relative w-full h-full rounded-3xl overflow-hidden bg-black/20 backdrop-blur-lg border border-white/10 shadow-2xl select-none'>
 									<Image
 										fill
 										alt={influencer.name}

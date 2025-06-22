@@ -3,9 +3,17 @@ from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime
 from database.models import InfluencerMode, VideoStatus, SponsorMatchStatus
 
+
 class LifestylePlanning(BaseModel):
     """Configuration for AI-driven lifestyle content planning."""
-    days_to_plan: int = Field(default=7, ge=7, le=90, description="Number of days for which to generate a content plan.")
+
+    days_to_plan: int = Field(
+        default=7,
+        ge=7,
+        le=90,
+        description="Number of days for which to generate a content plan.",
+    )
+
 
 class PostingFrequency(BaseModel):
     """Defines the intervals for automated content posting."""
@@ -22,7 +30,10 @@ class InfluencerBase(BaseModel):
     name: str
     face_image_url: Optional[str] = None
     persona: Dict[str, Any] = Field(description="Background, goals, tone, etc.")
-    life_story: Optional[str] = Field(default=None, description="A long-form narrative of the influencer's life story, backstory, and future.")
+    life_story: Optional[str] = Field(
+        default=None,
+        description="A long-form narrative of the influencer's life story, backstory, and future.",
+    )
     mode: InfluencerMode
     audience_targeting: Optional[Dict[str, Any]] = None
     growth_phase_enabled: bool = True
@@ -175,13 +186,15 @@ class Schedule(ScheduleBase):
 
 
 class SponsorBase(BaseModel):
-    company_name: str
-    brand_logo_url: Optional[str] = None
-    contact_email: Optional[EmailStr] = None
-    contact_phone: Optional[str] = None
+    name: str
+    website: Optional[str] = None
+    industry: Optional[str] = None
+    sponsorship_tier: Optional[str] = "Gold"
+    status: Optional[str] = "Active"
     targeting_tags: Optional[List[str]] = None
-    product_info: Optional[Dict[str, Any]] = None
-    campaign_details: Optional[Dict[str, Any]] = None
+
+    class Config:
+        from_attributes = True
 
 
 class SponsorCreate(SponsorBase):
@@ -221,3 +234,8 @@ class SponsorMatch(SponsorMatchBase):
 
 class ImageGenerateRequest(BaseModel):
     prompt: str
+
+
+class DivineInterventionRequest(BaseModel):
+    event_description: str
+    intensity: str  # e.g., 'subtle', 'moderate', 'major'

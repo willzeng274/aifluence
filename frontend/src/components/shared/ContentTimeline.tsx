@@ -1,43 +1,38 @@
 import React from "react";
+import { Clapperboard, BookUser, Newspaper } from "lucide-react";
 
 // This interface should be kept in sync with the one in the main page
 interface Video {
 	video_id: number;
+	schedule_id: number;
 	scheduled_time: string;
-	content_type: "story" | "reel";
+	content_type: "story" | "reel" | "post";
+	status: string;
 	caption: string;
+	hashtags: string[];
+	is_active: boolean;
+	has_sponsor: boolean;
 }
 
 type Props = {
 	videos: Video[];
 	onAddPost: (date: Date) => void;
+	onPostClick: (video: Video) => void;
 };
 
-const PostIcon = ({ type }: { type: "story" | "reel" }) => (
-	<div className='w-10 h-10 flex-shrink-0 flex items-center justify-center border border-white/10 bg-black'>
-		<svg
-			xmlns='http://www.w3.org/2000/svg'
-			width='20'
-			height='20'
-			viewBox='0 0 24 24'
-			fill='none'
-			stroke='currentColor'
-			strokeWidth='1.5'
-			strokeLinecap='round'
-			strokeLinejoin='round'
-			className='text-white/50'
-		>
-			{type === "reel" ? (
-				<path d='m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.934a.5.5 0 0 0-.777-.416L16 11l-5.223-3.482a.5.5 0 0 0-.777.416v8.132a.5.5 0 0 0 .777.416L16 13z' />
-			) : (
-				<>
-					<circle cx='12' cy='12' r='3' />
-					<path d='M22 12c-2.25 4-5.25 6-10 6s-7.75-2-10-6c2.25-4 5.25-6 10-6s7.75 2 10 6Z' />
-				</>
-			)}
-		</svg>
-	</div>
-);
+const PostIcon = ({ type }: { type: Video["content_type"] }) => {
+	const iconMap = {
+		reel: <Clapperboard className='text-rose-400' />,
+		story: <BookUser className='text-sky-400' />,
+		post: <Newspaper className='text-amber-400' />,
+	};
+
+	return (
+		<div className='w-10 h-10 flex-shrink-0 flex items-center justify-center border border-white/10 bg-black rounded-lg'>
+			{iconMap[type] || <Newspaper className='text-white/50' />}
+		</div>
+	);
+};
 
 const AddPostIcon = () => (
 	<svg
@@ -56,7 +51,7 @@ const AddPostIcon = () => (
 	</svg>
 );
 
-const ContentTimeline = ({ videos, onAddPost }: Props) => {
+const ContentTimeline = ({ videos, onAddPost, onPostClick }: Props) => {
 	const sortedVideos = [...videos].sort(
 		(a, b) =>
 			new Date(a.scheduled_time).getTime() -
@@ -64,11 +59,14 @@ const ContentTimeline = ({ videos, onAddPost }: Props) => {
 	);
 
 	const groupedByDay = sortedVideos.reduce((acc, video) => {
-		const date = new Date(video.scheduled_time).toLocaleDateString("en-US", {
-			year: "numeric",
-			month: "long",
-			day: "numeric",
-		});
+		const date = new Date(video.scheduled_time).toLocaleDateString(
+			"en-US",
+			{
+				year: "numeric",
+				month: "long",
+				day: "numeric",
+			}
+		);
 		if (!acc[date]) {
 			acc[date] = [];
 		}
@@ -87,9 +85,12 @@ const ContentTimeline = ({ videos, onAddPost }: Props) => {
 						>
 							<div className='text-right'>
 								<p className='text-sm uppercase tracking-widest text-white/50'>
-									{new Date(date).toLocaleDateString("en-US", {
-										month: "short",
-									})}
+									{new Date(date).toLocaleDateString(
+										"en-US",
+										{
+											month: "short",
+										}
+									)}
 								</p>
 								<p className='text-3xl font-bold text-white'>
 									{new Date(date).getDate()}
@@ -98,9 +99,10 @@ const ContentTimeline = ({ videos, onAddPost }: Props) => {
 
 							<div className='space-y-6'>
 								{dayVideos.map((video) => (
-									<div
+									<button
 										key={video.video_id}
-										className='flex items-start gap-4'
+										className='flex items-start gap-4 text-left w-full hover:bg-white/5 p-2 rounded-lg transition-colors'
+										onClick={() => onPostClick(video)}
 									>
 										<PostIcon type={video.content_type} />
 										<div>
@@ -117,11 +119,11 @@ const ContentTimeline = ({ videos, onAddPost }: Props) => {
 													minute: "2-digit",
 												})}
 											</p>
-											<p className='text-white/60 text-sm mt-1'>
+											<p className='text-white/60 text-sm mt-1 line-clamp-2'>
 												{video.caption}
 											</p>
 										</div>
-									</div>
+									</button>
 								))}
 							</div>
 							<button
@@ -153,4 +155,4 @@ const ContentTimeline = ({ videos, onAddPost }: Props) => {
 	);
 };
 
-export default ContentTimeline; 
+export default ContentTimeline;

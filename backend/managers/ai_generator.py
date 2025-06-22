@@ -8,9 +8,10 @@ from dotenv import load_dotenv
 load_dotenv()
 logger = logging.getLogger(__name__)
 
+
 class AIContentGenerator:
     """AI content generator using Claude API for dynamic, context-aware content."""
-    
+
     def __init__(self):
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
@@ -47,7 +48,7 @@ class AIContentGenerator:
                 model="claude-3-5-sonnet-20241022",
                 max_tokens=3000,
                 temperature=0.9,
-                messages=[{"role": "user", "content": prompt}]
+                messages=[{"role": "user", "content": prompt}],
             )
             life_story = response.content[0].text.strip()
             logger.info("Successfully generated life story.")
@@ -56,9 +57,79 @@ class AIContentGenerator:
             logger.error(f"Failed to generate life story: {e}")
             return f"Error in generation: {e}"
 
-    def generate_reel_content_plan(self, influencer, days_to_plan: int) -> List[Dict[str, Any]]:
+    def rewrite_life_story(self, current_story: str, event: str, intensity: str) -> str:
+        """
+        Rewrites the life story by incorporating a new "divine intervention" event,
+        guided by an intensity parameter.
+
+        Args:
+            current_story: The existing life story of the influencer.
+            event: A string describing the new life-altering event.
+            intensity: 'subtle', 'moderate', or 'major', guiding the rewrite's depth.
+
+        Returns:
+            The rewritten life story.
+        """
+        if not self.client:
+            logger.warning("AI client not configured. Cannot rewrite life story.")
+            return f"{current_story}\\n\\nA new event occurred: {event}"
+
+        intensity_map = {
+            "subtle": "Subtly weave the following event into the existing narrative. It should feel like a background detail or a quiet, personal moment that colors their future actions without completely changing their path.",
+            "moderate": "Make the following event a significant turning point. It should reshape their motivations, goals, or perspective in a noticeable way. The story's trajectory should clearly pivot from this moment.",
+            "major": "Rewrite the story to make the following event the central, defining moment of the influencer's life. This event should fundamentally alter their identity, purpose, and the entire narrative, past and future.",
+        }
+
+        instruction = intensity_map.get(
+            intensity, "Incorporate this new event naturally into the story."
+        )
+
+        prompt = f"""You are a master storyteller and character editor. Your task is to revise and enhance the life story of a virtual influencer based on a new, pivotal event—a "divine intervention."
+
+**Your Goal:** Seamlessly integrate the new event into the existing narrative, adjusting the tone, themes, and character arc as needed. This is not just about appending text; it's about thoughtfully weaving a new thread into the fabric of their life.
+
+**Existing Life Story:**
+---
+{current_story}
+---
+
+**Divine Intervention Event:**
+---
+{event}
+---
+
+**Rewrite Instruction ({intensity.capitalize()} Impact):**
+---
+{instruction}
+---
+
+**Output Requirements:**
+- Return only the complete, rewritten life story.
+- Do not include any titles, headers, or explanations.
+- Ensure the final text flows as a single, cohesive narrative.
+"""
+
+        try:
+            response = self.client.messages.create(
+                model="claude-3-5-sonnet-20241022",
+                max_tokens=3000,
+                temperature=0.85,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            rewritten_story = response.content[0].text.strip()
+            logger.info(f"Successfully rewrote life story with {intensity} intensity.")
+            return rewritten_story
+        except Exception as e:
+            logger.error(f"Failed to rewrite life story: {e}")
+            # Fallback to appending to avoid losing the event info
+            return f"{current_story}\\n\\n**A Fateful Intervention Occurred:** {event}"
+
+    def generate_reel_content_plan(
+        self, influencer, days_to_plan: int
+    ) -> List[Dict[str, Any]]:
         """Generates a reel content plan based on the influencer's life story."""
-        if not self.client: return []
+        if not self.client:
+            return []
         persona = influencer.persona or {}
         num_reels = max(2, int(days_to_plan / 4))
 
@@ -97,25 +168,31 @@ class AIContentGenerator:
 """
         try:
             response = self.client.messages.create(
-                model="claude-3-5-sonnet-20241022", max_tokens=1500, temperature=0.8,
-                messages=[{"role": "user", "content": prompt}]
+                model="claude-3-5-sonnet-20241022",
+                max_tokens=1500,
+                temperature=0.8,
+                messages=[{"role": "user", "content": prompt}],
             )
             content = response.content[0].text
-            start = content.find('[')
-            end = content.rfind(']') + 1
-            if start == -1 or end == 0: return []
+            start = content.find("[")
+            end = content.rfind("]") + 1
+            if start == -1 or end == 0:
+                return []
             return json.loads(content[start:end])
         except Exception as e:
             logger.error(f"Failed to generate reel content plan: {e}")
             return []
 
-    def generate_story_content_plan(self, influencer, reel_plan_summary: str, days_to_plan: int) -> List[Dict[str, Any]]:
+    def generate_story_content_plan(
+        self, influencer, reel_plan_summary: str, days_to_plan: int
+    ) -> List[Dict[str, Any]]:
         """Generates a story content plan that is aware of the reel plan."""
-        if not self.client: return []
+        if not self.client:
+            return []
         persona = influencer.persona or {}
         # Dynamically calculate a reasonable number of stories
         num_stories = max(4, int(days_to_plan / 2))
-        
+
         prompt = f"""You are a content strategist for an influencer. Based on their character bio and upcoming reels, generate a plan for {num_stories} casual stories over the next {days_to_plan} days. These stories should feel like spontaneous, in-the-moment updates.
 
 **Character Bio:**
@@ -151,31 +228,36 @@ class AIContentGenerator:
 """
         try:
             response = self.client.messages.create(
-                model="claude-3-5-sonnet-20241022", max_tokens=2000, temperature=0.85,
-                messages=[{"role": "user", "content": prompt}]
+                model="claude-3-5-sonnet-20241022",
+                max_tokens=2000,
+                temperature=0.85,
+                messages=[{"role": "user", "content": prompt}],
             )
             content = response.content[0].text
-            start = content.find('[')
-            end = content.rfind(']') + 1
-            if start == -1 or end == 0: return []
+            start = content.find("[")
+            end = content.rfind("]") + 1
+            if start == -1 or end == 0:
+                return []
             return json.loads(content[start:end])
         except Exception as e:
             logger.error(f"Failed to generate story content plan: {e}")
             return []
 
-    def generate_scene_prompt(self, 
-                       influencer,
-                       context: Optional[str] = None,
-                       sponsor_info: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def generate_scene_prompt(
+        self,
+        influencer,
+        context: Optional[str] = None,
+        sponsor_info: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         """Generates a video prompt with a third-person description and a first-person intention."""
-        
+
         if not self.client:
             logger.error("Claude API not configured")
             return self._fallback_prompt(context)
-        
+
         persona = influencer.persona or {}
         audience = influencer.audience_targeting or {}
-        
+
         background = persona.get("background", "")
         tone = persona.get("tone", "casual")
         goals = persona.get("goals", [])
@@ -223,42 +305,52 @@ Provide the output as a clean JSON object with no extra text or explanations.
                 model="claude-3-5-sonnet-20241022",
                 max_tokens=1000,
                 temperature=0.95,
-                messages=[{"role": "user", "content": prompt}]
+                messages=[{"role": "user", "content": prompt}],
             )
-            
+
             content = response.content[0].text
             try:
                 # Robust JSON extraction
-                start = content.find('{')
-                end = content.rfind('}') + 1
+                start = content.find("{")
+                end = content.rfind("}") + 1
                 if start == -1 or end == 0:
-                    logger.error(f"Failed to find JSON object in Claude response. Raw response: {content}")
+                    logger.error(
+                        f"Failed to find JSON object in Claude response. Raw response: {content}"
+                    )
                     return self._fallback_prompt(context)
-                
+
                 json_str = content[start:end]
                 prompt_data = json.loads(json_str)
-                
+
                 logger.info("Generated scene prompt with Claude API")
                 return {
-                    "description": prompt_data.get("description", "No description generated."),
-                    "intention": prompt_data.get("intention", "No intention generated.")
+                    "description": prompt_data.get(
+                        "description", "No description generated."
+                    ),
+                    "intention": prompt_data.get(
+                        "intention", "No intention generated."
+                    ),
                 }
-                
+
             except (json.JSONDecodeError, KeyError) as e:
-                logger.error(f"Failed to parse Claude response for scene prompt: {e}. Raw response: {content}")
+                logger.error(
+                    f"Failed to parse Claude response for scene prompt: {e}. Raw response: {content}"
+                )
                 return self._fallback_prompt(context)
-                
+
         except Exception as e:
             logger.error(f"Claude API error during scene prompt generation: {e}")
             return self._fallback_prompt(context)
 
-    def generate_caption(self, prompt_data: Dict[str, Any], hashtags: Optional[List[str]] = None) -> str:
+    def generate_caption(
+        self, prompt_data: Dict[str, Any], hashtags: Optional[List[str]] = None
+    ) -> str:
         """Generate a caption from the scene description."""
         if not self.client:
             return self._simple_caption(prompt_data, hashtags)
 
         description = prompt_data.get("description", "Check this out!")
-        
+
         prompt = f"""Generate a short, engaging caption for a social media post.
 
 The post is about: "{description}"
@@ -275,14 +367,14 @@ Example:
                 model="claude-3-5-sonnet-20241022",
                 max_tokens=200,
                 temperature=0.75,
-                messages=[{"role": "user", "content": prompt}]
+                messages=[{"role": "user", "content": prompt}],
             )
             content = response.content[0].text
-            start = content.find('{')
-            end = content.rfind('}') + 1
+            start = content.find("{")
+            end = content.rfind("}") + 1
             json_str = content[start:end]
             caption_data = json.loads(json_str)
-            
+
             caption = caption_data.get("caption", description)
             generated_hashtags = caption_data.get("hashtags", [])
 
@@ -290,13 +382,13 @@ Example:
             if hashtags:
                 all_hashtags.extend(hashtags)
             all_hashtags.extend(generated_hashtags)
-            
+
             final_hashtags = " ".join(all_hashtags)
-            
+
             full_caption = f"{caption} {final_hashtags}".strip()
             logger.info("Generated caption with Claude API")
             return full_caption
-            
+
         except Exception as e:
             logger.error(f"Caption generation error: {e}")
             return self._simple_caption(prompt_data, hashtags)
@@ -305,15 +397,18 @@ Example:
         logger.warning("Using fallback prompt generator")
         return {
             "description": context or "A default video scene.",
-            "intention": "I need to make this interesting."
+            "intention": "I need to make this interesting.",
         }
 
-    def _simple_caption(self, prompt_data: Dict[str, Any], hashtags: Optional[List[str]]) -> str:
+    def _simple_caption(
+        self, prompt_data: Dict[str, Any], hashtags: Optional[List[str]]
+    ) -> str:
         logger.warning("Using simple caption generator")
         caption_text = prompt_data.get("description", "Cool new video!")
         if hashtags:
             hashtag_str = " ".join(hashtags)
             return f"{caption_text} {hashtag_str}"
         return caption_text
+
 
 ai_generator = AIContentGenerator()

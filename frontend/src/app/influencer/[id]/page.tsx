@@ -4,16 +4,18 @@ import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import React, { useEffect, useState, useCallback } from "react";
 import "react-calendar/dist/Calendar.css";
-import AddSponsoredPostModal from "@/components/modals/AddSponsoredPostModal";
+import AddPostModal from "@/components/modals/AddPostModal";
 import ContentTimeline from "@/components/shared/ContentTimeline";
 import ScheduleCalendar from "@/components/shared/ScheduleCalendar";
+import DivineIntervention from "@/components/DivineIntervention";
+import PostDetailsModal from "@/components/modals/PostDetailsModal";
 
 // Define video and influencer types based on API response
 interface Video {
 	video_id: number;
 	schedule_id: number;
 	scheduled_time: string;
-	content_type: "story" | "reel";
+	content_type: "story" | "reel" | "post";
 	status: string;
 	caption: string;
 	hashtags: string[];
@@ -94,6 +96,8 @@ const InfluencerProfilePage = () => {
 	const [selectedDateForPost, setSelectedDateForPost] = useState<Date | null>(
 		null
 	);
+	const [isPostDetailsModalOpen, setIsPostDetailsModalOpen] = useState(false);
+	const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
 	const [viewMode, setViewMode] = useState<"timeline" | "calendar">(
 		"timeline"
 	);
@@ -141,6 +145,11 @@ const InfluencerProfilePage = () => {
 	useEffect(() => {
 		fetchInfluencerData();
 	}, [fetchInfluencerData]);
+
+	const handlePostClick = (video: Video) => {
+		setSelectedVideo(video);
+		setIsPostDetailsModalOpen(true);
+	};
 
 	const handleAddPost = (date: Date) => {
 		setSelectedDateForPost(date);
@@ -218,7 +227,7 @@ const InfluencerProfilePage = () => {
 	);
 
 	return (
-		<div className='min-h-screen bg-[#111111] text-white font-sans overflow-x-hidden'>
+		<div className='min-h-screen bg-transparent text-white font-sans overflow-x-hidden'>
 			<div className='absolute inset-0 z-0'>
 				<Image
 					src={influencer.face_image_url}
@@ -226,7 +235,7 @@ const InfluencerProfilePage = () => {
 					layout='fill'
 					className='object-cover opacity-10 blur-3xl scale-150'
 				/>
-				<div className='absolute inset-0 bg-gradient-to-b from-black/10 via-black/60 to-[#111111]' />
+				<div className='absolute inset-0 bg-gradient-to-b from-black/10 via-black/60 to-transparent' />
 				<div className='absolute inset-0 bg-[url(/grid.svg)] opacity-5' />
 			</div>
 
@@ -263,7 +272,7 @@ const InfluencerProfilePage = () => {
 										.toLowerCase()
 										.replace(/\\s+/g, "")}
 								</p>
-								<h1 className='text-6xl md:text-8xl font-bold tracking-tighter uppercase'>
+								<h1 className='text-6xl md:text-8xl font-bold tracking-tighter uppercase break-words'>
 									{influencer.name}
 								</h1>
 							</div>
@@ -365,9 +374,15 @@ const InfluencerProfilePage = () => {
 
 						{influencer.life_story && (
 							<Section delay={400}>
-								<h2 className='text-sm text-white/50 uppercase tracking-widest mb-4 text-center'>
-									Life Story
-								</h2>
+								<div className='flex items-center justify-center gap-4 mb-4'>
+									<h2 className='text-sm text-white/50 uppercase tracking-widest'>
+										Life Story
+									</h2>
+									<DivineIntervention
+										influencerId={influencer.id}
+										onIntervention={fetchInfluencerData}
+									/>
+								</div>
 								<p className='text-white/70 leading-loose whitespace-pre-wrap text-lg font-light border-y border-white/10 py-8 px-4'>
 									{influencer.life_story}
 								</p>
@@ -406,6 +421,7 @@ const InfluencerProfilePage = () => {
 								<ContentTimeline
 									videos={influencer.videos || []}
 									onAddPost={handleAddPost}
+									onPostClick={handlePostClick}
 								/>
 							) : (
 								<div className='bg-black/20 p-2'>
@@ -421,13 +437,19 @@ const InfluencerProfilePage = () => {
 			</main>
 
 			{selectedDateForPost && (
-				<AddSponsoredPostModal
+				<AddPostModal
 					isOpen={isModalOpen}
 					onClose={handleCloseModal}
 					onSubmit={handleScheduleSubmit}
 					date={selectedDateForPost}
 				/>
 			)}
+
+			<PostDetailsModal
+				isOpen={isPostDetailsModalOpen}
+				onClose={() => setIsPostDetailsModalOpen(false)}
+				video={selectedVideo}
+			/>
 
 			<style jsx>{`
 				@keyframes fade-in-down {
