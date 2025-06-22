@@ -18,6 +18,7 @@
     "react-dom": "^19.0.0",
     "rechart": "^0.0.1",
     "recharts": "^2.15.4",
+    "simplebar": "^6.3.1",
     "simplebar-react": "^3.3.1"
   },
   "devDependencies": {

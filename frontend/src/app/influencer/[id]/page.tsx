@@ -56,7 +56,7 @@ const InfluencerProfilePage = () => {
 	const scheduledDays = (influencer.schedule || {}) as Schedule;
 
 	return (
-		<div className='min-h-screen bg-[#111111] text-white font-sans animate-page-enter'>
+		<div className='min-h-screen bg-[#111111] text-white font-sans animate-page-enter overflow-auto'>
 			<div className='absolute inset-0 z-0'>
 				<Image
 					src={influencer.image}

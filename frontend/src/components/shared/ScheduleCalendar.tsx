@@ -101,41 +101,75 @@ const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
                     .custom-calendar-container .react-calendar {
                         background-color: transparent;
                         border: 1px solid rgba(255, 255, 255, 0.1);
-                        border-radius: 1rem; /* rounded-2xl */
-                        padding: 0.75rem; /* p-3 */
+                        border-radius: 1rem;
+                        padding: 0.75rem;
                         font-family: inherit;
                         width: 100%;
                     }
-                     .react-calendar__navigation button {
-                        color: white;
+
+                    .react-calendar__navigation button {
+                        color: white !important;
                         min-width: 44px;
                         font-size: 1rem;
                         font-weight: bold;
+                        background: transparent !important;
+                        border: none !important;
+                        outline: none !important;
+                        box-shadow: none !important;
                     }
-                    .react-calendar__navigation button:hover {
-                        background-color: rgba(0, 0, 0, 0.07);
+                    
+                    .react-calendar__navigation button:hover,
+                    .react-calendar__navigation button:focus,
+                    .react-calendar__navigation button:active {
+                        background-color: rgba(255, 255, 255, 0.1) !important;
+                        color: white !important;
+                        outline: none !important;
+                        box-shadow: none !important;
                     }
+                    
+                    .react-calendar__navigation button:disabled {
+                        background-color: transparent !important;
+                        color: rgba(255, 255, 255, 0.3) !important;
+                    }
+                    
+                    .react-calendar__navigation button:disabled:hover {
+                        background-color: transparent !important;
+                    }
+                    
                     .react-calendar__navigation__label {
-                        font-weight: bold;
-                        color: white;
+                        font-weight: bold !important;
+                        color: white !important;
+                        background: transparent !important;
                     }
+                    
+                    .react-calendar__navigation__label:hover,
+                    .react-calendar__navigation__label:focus {
+                        background-color: rgba(255, 255, 255, 0.1) !important;
+                        color: white !important;
+                        outline: none !important;
+                    }
+
+                    .react-calendar__navigation__arrow {
+                        background: transparent !important;
+                    }
+                    
+                    .react-calendar__navigation__arrow:hover,
+                    .react-calendar__navigation__arrow:focus {
+                        background-color: rgba(255, 255, 255, 0.1) !important;
+                    }
+                    
                     .react-calendar__month-view__weekdays {
-                        font-size: 0.75rem; /* text-xs */
-                        font-weight: 600; /* font-semibold */
+                        font-size: 0.75rem;
+                        font-weight: 600;
                         color: rgba(255, 255, 255, 0.5);
                         text-transform: uppercase;
                         margin-bottom: 0.5rem;
                     }
-                    .react-calendar__navigation button:disabled{
-                        background-color: rgba(0, 0, 0, 0.07);
-                    }
-
-                    .react-calendar__navigation *:hover{
-                        background-color: rgba(0, 0, 0, 0.07);
-                    }
+                    
                     .react-calendar__month-view__weekdays__weekday abbr {
                         text-decoration: none;
                     }
+                    
                     .react-calendar__tile {
                         color: white;
                         border-radius: 9999px;
@@ -146,27 +180,45 @@ const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
                         align-items: center;
                         padding-top: 0.25rem;
                         transition: background-color 0.2s;
+                        background: transparent !important;
+                        border: none !important;
+                        outline: none !important;
                     }
-                    .react-calendar__tile:hover {
-                        background-color: rgba(0, 0, 0, 0.07);
+                    
+                    .react-calendar__tile:hover,
+                    .react-calendar__tile:focus {
+                        background-color: rgba(255, 255, 255, 0.1) !important;
+                        outline: none !important;
                     }
+                    
                     .react-calendar__tile--active-custom,
-                    .react-calendar__tile--active-custom:hover {
+                    .react-calendar__tile--active-custom:hover,
+                    .react-calendar__tile--active-custom:focus {
                         background-color: rgba(56, 189, 179, 0.3) !important;
                     }
+                    
                     .react-calendar__tile--now {
-                        background-color: rgba(0, 0, 0, 0.05);
+                        background-color: rgba(255, 255, 255, 0.05) !important;
                     }
-                    .react-calendar__tile--now:hover {
-                        background-color: rgba(0, 0, 0, 0.15);
+                    
+                    .react-calendar__tile--now:hover,
+                    .react-calendar__tile--now:focus {
+                        background-color: rgba(255, 255, 255, 0.15) !important;
                     }
+                    
                     .react-calendar__month-view__days__day--neighboringMonth {
                         color: rgba(255, 255, 255, 0.3);
                     }
-                     .react-calendar__tile:disabled {
+                    
+                    .react-calendar__tile:disabled {
                         background-color: transparent !important;
-                        color: rgba(255, 255, 255, 0.2);
+                        color: rgba(255, 255, 255, 0.2) !important;
                         cursor: default;
+                    }
+                    
+                    .react-calendar__tile:disabled:hover,
+                    .react-calendar__tile:disabled:focus {
+                        background-color: transparent !important;
                     }
                 `}</style>
 			</div>
