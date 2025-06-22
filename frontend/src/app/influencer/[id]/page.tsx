@@ -6,6 +6,10 @@ import Image from "next/image";
 import React, { useEffect, useState } from "react";
 import StatsChart from "@/components/StatsChart";
 import EngagementGrid from "@/components/EngagementGrid";
+import "react-calendar/dist/Calendar.css";
+import ScheduleCalendar, {
+	Schedule,
+} from "@/components/shared/ScheduleCalendar";
 
 const ChevronLeftIcon = (props: React.SVGProps<SVGSVGElement>) => (
 	<svg
@@ -28,7 +32,7 @@ const InfluencerProfilePage = () => {
 	const params = useParams();
 	const router = useRouter();
 	const [influencer, setInfluencer] = useState<
-		(typeof influencers)[0] | null
+		((typeof influencers)[0] & { schedule?: Schedule }) | null
 	>(null);
 
 	useEffect(() => {
@@ -48,6 +52,8 @@ const InfluencerProfilePage = () => {
 			</div>
 		);
 	}
+
+	const scheduledDays = (influencer.schedule || {}) as Schedule;
 
 	return (
 		<div className='min-h-screen bg-[#111111] text-white font-sans animate-page-enter'>
@@ -129,6 +135,14 @@ const InfluencerProfilePage = () => {
 								Follower Growth (6 Months)
 							</h3>
 							<StatsChart data={influencer.followerHistory} />
+						</div>
+
+						{/* --- Schedule Section --- */}
+						<div className='bg-white/5 p-6 rounded-2xl md:col-span-2'>
+							<h3 className='text-sm text-white/50 uppercase tracking-widest mb-4'>
+								Content Schedule
+							</h3>
+							<ScheduleCalendar schedule={scheduledDays} />
 						</div>
 					</div>
 				</div>

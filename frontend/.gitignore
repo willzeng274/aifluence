@@ -39,3 +39,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# sveltekit
+.svelte-kit
+# Remix
+.cache
+# Deno
+deno.lock
+
+# local env files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local

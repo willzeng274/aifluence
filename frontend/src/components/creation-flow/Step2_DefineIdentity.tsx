@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { User, Sparkles } from "lucide-react";
+import { User, Sparkles, Loader2 } from "lucide-react";
 import { InfluencerType } from "./Step1_ChooseType";
 
 interface Step2DefineIdentityProps {
@@ -8,6 +8,13 @@ interface Step2DefineIdentityProps {
 	onSubmit: (data: { coreScript: string; avatarSeed: string }) => void;
 }
 
+const suggestionTags = [
+	"Fitness Guru",
+	"Tech Reviewer",
+	"Food Blogger",
+	"Travel Vlogger",
+];
+
 const Step2DefineIdentity: React.FC<Step2DefineIdentityProps> = ({
 	influencerType,
 	onBack,
@@ -15,10 +22,32 @@ const Step2DefineIdentity: React.FC<Step2DefineIdentityProps> = ({
 }) => {
 	const [coreScript, setCoreScript] = useState("");
 	const [avatarSeed, setAvatarSeed] = useState("default-seed");
+	const [isGenerating, setIsGenerating] = useState(false);
 
 	const handleGenerateAvatar = () => {
 		const seed = Math.random().toString(36).substring(7);
 		setAvatarSeed(seed);
+	};
+
+	const handleSuggestionClick = async (topic: string) => {
+		setIsGenerating(true);
+		try {
+			const response = await fetch("/api/generate-prompt", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ topic }),
+			});
+			if (response.ok) {
+				const data = await response.json();
+				setCoreScript(data.prompt);
+			} else {
+				console.error("Failed to generate suggestion");
+			}
+		} catch (error) {
+			console.error("Error calling suggestion API:", error);
+		} finally {
+			setIsGenerating(false);
+		}
 	};
 
 	const handleSubmit = () => {
@@ -62,41 +91,36 @@ const Step2DefineIdentity: React.FC<Step2DefineIdentityProps> = ({
 					>
 						{currentContent.personaLabel}
 					</label>
+					<div className='mb-4'>
+						<p className='text-sm text-white/50 mb-2'>
+							Need inspiration? Try one of these ideas:
+						</p>
+						<div className='flex flex-wrap gap-2'>
+							{suggestionTags.map((tag) => (
+								<button
+									key={tag}
+									onClick={() => handleSuggestionClick(tag)}
+									disabled={isGenerating}
+									className='flex items-center gap-2 px-3 py-1 bg-white/10 text-xs rounded-full hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-wait'
+								>
+									{isGenerating ? (
+										<Loader2 className='w-3 h-3 animate-spin' />
+									) : (
+										<Sparkles className='w-3 h-3 text-teal-400' />
+									)}
+									{tag}
+								</button>
+							))}
+						</div>
+					</div>
 					<textarea
 						id='persona'
 						value={coreScript}
 						onChange={(e) => setCoreScript(e.target.value)}
-						className='w-full h-32 px-4 py-3 bg-white/5 border border-white/10 rounded-lg placeholder-white/30 text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all duration-300'
+						className='w-full h-32 px-4 py-3 bg-white/5 border border-white/10 rounded-lg placeholder-white/30 text-white focus:outline-none focus:ring-2 focus:ring-teal-500/50 transition-all duration-300'
 						placeholder={currentContent.personaPlaceholder}
 						required
 					/>
-				</div>
-
-				<div>
-					<label className='block text-sm font-medium text-white/70 mb-2'>
-						Generate Face
-					</label>
-					<div className='flex items-center gap-6'>
-						<div className='w-24 h-24 bg-white/5 border border-white/10 rounded-full flex items-center justify-center'>
-							{avatarUrl ? (
-								<img
-									src={avatarUrl}
-									alt='Generated Avatar'
-									className='w-full h-full rounded-full object-cover'
-								/>
-							) : (
-								<User className='w-10 h-10 text-white/30' />
-							)}
-						</div>
-						<button
-							type='button'
-							onClick={handleGenerateAvatar}
-							className='px-6 py-2 border border-white/20 rounded-lg font-semibold text-sm hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2'
-						>
-							Generate Avatar
-							<Sparkles className='w-4 h-4' />
-						</button>
-					</div>
 				</div>
 			</div>
 

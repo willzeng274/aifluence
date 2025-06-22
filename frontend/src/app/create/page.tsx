@@ -71,7 +71,7 @@ const CreateInfluencerPage = () => {
 			<div className='absolute inset-0 -z-10 h-full w-full bg-[#111111] bg-[radial-gradient(#ffffff1a_1px,transparent_1px)] [background-size:32px_32px]'></div>
 			<div className='absolute inset-0 -z-20 h-full w-full bg-gradient-to-tr from-black via-transparent to-purple-900/50 opacity-60'></div>
 
-			<div className='w-full max-w-2xl'>
+			<div className='w-full max-w-3xl'>
 				<AnimatePresence mode='wait'>
 					{step === 1 && (
 						<WizardStep key='step1'>

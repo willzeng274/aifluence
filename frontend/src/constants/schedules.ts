@@ -1,10 +1,14 @@
 export interface ScheduledItem {
 	type: "post" | "story";
 	time: string; // e.g., "2:30 PM"
+	description: string;
 }
 
 // Day of week: 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-export const companyWeeklySchedule: Record<number, ScheduledItem[]> = {
+export const companyWeeklySchedule: Record<
+	number,
+	Omit<ScheduledItem, "description">[]
+> = {
 	1: [
 		{ type: "post", time: "9:15 AM" },
 		{ type: "story", time: "12:00 PM" },
@@ -37,7 +41,12 @@ export const generateCompanyScheduleForMonth = (
 
 		if (companyWeeklySchedule[dayOfWeek]) {
 			const dateKey = currentDate.toISOString().split("T")[0];
-			schedule[dateKey] = companyWeeklySchedule[dayOfWeek];
+			schedule[dateKey] = companyWeeklySchedule[dayOfWeek].map(
+				(item) => ({
+					...item,
+					description: `Preset ${item.type} for brand consistency.`,
+				})
+			);
 		}
 	}
 
