@@ -84,7 +84,7 @@ const Step1ChooseType: React.FC<Step1ChooseTypeProps> = ({ onSelectType }) => {
 	const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
 	return (
-		<div className='relative'>
+		<div className='relative overflow-x-hidden'>
 			<div className='absolute -top-20 -left-20 w-40 h-40 bg-white/5 blur-3xl' />
 			<div className='absolute -bottom-20 -right-20 w-60 h-60 bg-white/5 blur-3xl' />
 
