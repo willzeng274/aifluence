@@ -69,6 +69,31 @@ const Home = () => {
 			if (response.ok) {
 				const fullInfluencerData: InfluencerDetails =
 					await response.json();
+				
+				// Fetch videos for the selected influencer
+				try {
+					const videoResponse = await fetch(
+						`http://localhost:8000/influencer/${influencer.id}/videos`
+					);
+					if (videoResponse.ok) {
+						const videoData = await videoResponse.json();
+						if (videoData.videos && videoData.videos.length > 0) {
+							fullInfluencerData.videos = videoData.videos;
+						} else {
+							fullInfluencerData.videos = [];
+						}
+					} else {
+						fullInfluencerData.videos = [];
+					}
+				} catch (error) {
+					console.error(`Failed to fetch videos for influencer ${influencer.id}`, error);
+					fullInfluencerData.videos = [];
+				}
+				
+				// Add random stats
+				fullInfluencerData.followers = `${(Math.random() * 5).toFixed(1)}M`;
+				fullInfluencerData.engagement = `${(Math.random() * 5).toFixed(2)}%`;
+				
 				setSelectedInfluencer(fullInfluencerData);
 			} else {
 				console.error("Failed to fetch full influencer details");
