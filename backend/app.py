@@ -13,11 +13,12 @@ from sqlalchemy.orm import Session
 
 from google import genai
 
-from database.models import get_db, Influencer, Video, Schedule, Sponsor, SponsorMatch, VideoStatus
+from database.models import get_db, Influencer, Video, Schedule, Sponsor, SponsorMatch, VideoStatus, InfluencerMode
 from api import schemas
 from managers.instagram_manager import InstagramManager
 from managers.scheduler import video_scheduler
-from utils.background_tasks import process_interval_schedule, process_dated_schedule
+from managers.ai_generator import ai_generator
+from utils.background_tasks import process_interval_schedule, process_dated_schedule, plan_and_schedule_from_life_story
 
 load_dotenv()
 
@@ -54,6 +55,10 @@ def create_influencer_wizard(
         "tone": wizard_data.tone
     }
     
+    life_story = None
+    if wizard_data.mode == InfluencerMode.LIFESTYLE:
+        life_story = ai_generator.generate_life_story(wizard_data.name, persona)
+
     audience_targeting = {
         "age_range": wizard_data.audience_age_range,
         "gender": wizard_data.audience_gender,
@@ -65,6 +70,7 @@ def create_influencer_wizard(
         name=wizard_data.name,
         face_image_url=wizard_data.face_image_url,
         persona=persona,
+        life_story=life_story,
         mode=wizard_data.mode,
         audience_targeting=audience_targeting,
         growth_phase_enabled=wizard_data.growth_phase_enabled,
@@ -77,26 +83,26 @@ def create_influencer_wizard(
     
     success, _message = ig_manager.add_account(
         wizard_data.instagram_username,
-        wizard_data.instagram_password
+        wizard_data.instagram_password,
+        db_influencer.id
     )
-    if success:
-        from database.models import InstagramAccount
-        ig_account = db.query(InstagramAccount).filter(
-            InstagramAccount.username == wizard_data.instagram_username
-        ).first()
-        if ig_account:
-            ig_account.influencer_id = db_influencer.id
-            db.commit()
-    else:
+    if not success:
         print(f"Warning: Could not link Instagram account for {wizard_data.name}. Error: {_message}")
     
-    if wizard_data.posting_frequency:
+    if wizard_data.posting_frequency and wizard_data.mode == InfluencerMode.COMPANY:
         background_tasks.add_task(
             process_interval_schedule,
             db_influencer.id,
             7, # 7 days
             wizard_data.posting_frequency.reel_interval_hours,
             wizard_data.posting_frequency.story_interval_hours
+        )
+    elif wizard_data.mode == InfluencerMode.LIFESTYLE:
+        days_to_plan = wizard_data.lifestyle_planning.days_to_plan if wizard_data.lifestyle_planning else 30 # for now
+        background_tasks.add_task(
+            plan_and_schedule_from_life_story,
+            db_influencer.id,
+            days_to_plan=days_to_plan
         )
     
     return db_influencer

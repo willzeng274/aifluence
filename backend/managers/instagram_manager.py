@@ -12,8 +12,8 @@ class InstagramManager:
     def __init__(self):
         self.clients: Dict[str, Client] = {}
     
-    def add_account(self, username: str, password: str) -> tuple[bool, str]:
-        """Add a new Instagram account"""
+    def add_account(self, username: str, password: str, influencer_id: int) -> tuple[bool, str]:
+        """Add a new Instagram account and link it to an influencer."""
         db = get_db_session()
         
         try:
@@ -58,6 +58,7 @@ class InstagramManager:
                 media_count = 0
             
             account = InstagramAccount(
+                influencer_id=influencer_id,
                 username=username,
                 password=password,
                 instagram_user_id=str(client.user_id),

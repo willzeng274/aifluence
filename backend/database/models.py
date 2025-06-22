@@ -29,6 +29,7 @@ class Influencer(Base):
     name = Column(String(255), nullable=False)
     face_image_url = Column(String(500), nullable=True)
     persona = Column(JSON, nullable=False)
+    life_story = Column(Text, nullable=True)
     mode = Column(Enum(InfluencerMode), nullable=False)
     audience_targeting = Column(JSON, nullable=True)
     growth_phase_enabled = Column(Boolean, default=True)

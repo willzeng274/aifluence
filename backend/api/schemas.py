@@ -3,6 +3,10 @@ from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime
 from database.models import InfluencerMode, VideoStatus, SponsorMatchStatus
 
+class LifestylePlanning(BaseModel):
+    """Configuration for AI-driven lifestyle content planning."""
+    days_to_plan: int = Field(default=7, ge=7, le=90, description="Number of days for which to generate a content plan.")
+
 class PostingFrequency(BaseModel):
     """Defines the intervals for automated content posting."""
     story_interval_hours: Optional[int] = Field(default=24, ge=24, description="Interval in hours for posting new stories.")
@@ -12,11 +16,13 @@ class InfluencerBase(BaseModel):
     name: str
     face_image_url: Optional[str] = None
     persona: Dict[str, Any] = Field(description="Background, goals, tone, etc.")
+    life_story: Optional[str] = Field(default=None, description="A long-form narrative of the influencer's life story, backstory, and future.")
     mode: InfluencerMode
     audience_targeting: Optional[Dict[str, Any]] = None
     growth_phase_enabled: bool = True
     growth_intensity: float = Field(default=0.5, ge=0, le=1)
     posting_frequency: Optional[PostingFrequency] = None
+    lifestyle_planning: Optional[LifestylePlanning] = None
 
 class InfluencerCreate(InfluencerBase):
     instagram_username: str
@@ -45,6 +51,7 @@ class OnboardingWizardRequest(BaseModel):
     growth_phase_enabled: bool = True
     growth_intensity: float = Field(default=0.5, ge=0, le=1)
     posting_frequency: Optional[PostingFrequency] = None
+    lifestyle_planning: Optional[LifestylePlanning] = None
     instagram_username: str
     instagram_password: str
 
