@@ -3,10 +3,17 @@ from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime
 from database.models import InfluencerMode, VideoStatus, SponsorMatchStatus
 
+
 class PostingFrequency(BaseModel):
     """Defines the intervals for automated content posting."""
-    story_interval_hours: Optional[int] = Field(default=24, ge=24, description="Interval in hours for posting new stories.")
-    reel_interval_hours: Optional[int] = Field(default=72, ge=24, description="Interval in hours for posting new reels.")
+
+    story_interval_hours: Optional[int] = Field(
+        default=24, ge=24, description="Interval in hours for posting new stories."
+    )
+    reel_interval_hours: Optional[int] = Field(
+        default=72, ge=24, description="Interval in hours for posting new reels."
+    )
+
 
 class InfluencerBase(BaseModel):
     name: str
@@ -18,9 +25,11 @@ class InfluencerBase(BaseModel):
     growth_intensity: float = Field(default=0.5, ge=0, le=1)
     posting_frequency: Optional[PostingFrequency] = None
 
+
 class InfluencerCreate(InfluencerBase):
     instagram_username: str
     instagram_password: str
+
 
 class Influencer(InfluencerBase):
     id: int
@@ -30,6 +39,7 @@ class Influencer(InfluencerBase):
 
     class Config:
         from_attributes = True
+
 
 class OnboardingWizardRequest(BaseModel):
     mode: InfluencerMode
@@ -48,32 +58,61 @@ class OnboardingWizardRequest(BaseModel):
     instagram_username: str
     instagram_password: str
 
+
 class DatedPost(BaseModel):
     """A specific post scheduled for a given date and time."""
-    post_datetime: datetime = Field(..., description="The exact date and time for the post.")
-    content_type: Literal["post", "story", "reel"] = Field(default="post", description="The type of content to be created.")
-    prompt: Optional[str] = Field(default=None, description="A prompt to guide AI content generation for this post.")
+
+    post_datetime: datetime = Field(
+        ..., description="The exact date and time for the post."
+    )
+    content_type: Literal["post", "story", "reel"] = Field(
+        default="post", description="The type of content to be created."
+    )
+    prompt: Optional[str] = Field(
+        default=None,
+        description="A prompt to guide AI content generation for this post.",
+    )
+
 
 class BulkScheduleRequest(BaseModel):
     """Request to schedule a batch of specific, dated posts."""
+
     influencer_id: int
     posts: List[DatedPost]
 
+
 class IntervalScheduleRequest(BaseModel):
     """Request to schedule posts at regular intervals."""
+
     influencer_id: int
-    days_to_schedule: int = Field(default=30, ge=1, description="Number of days into the future to schedule posts.")
-    reel_interval_hours: Optional[int] = Field(default=48, ge=1, description="Interval in hours for posting new reels.")
-    story_interval_hours: Optional[int] = Field(default=12, ge=1, description="Interval in hours for posting new stories.")
+    days_to_schedule: int = Field(
+        default=30,
+        ge=1,
+        description="Number of days into the future to schedule posts.",
+    )
+    reel_interval_hours: Optional[int] = Field(
+        default=48, ge=1, description="Interval in hours for posting new reels."
+    )
+    story_interval_hours: Optional[int] = Field(
+        default=12, ge=1, description="Interval in hours for posting new stories."
+    )
+
 
 class PostType(BaseModel):
     type: Literal["post", "story", "reel"]
     time: str  # "HH:MM AM/PM" format
 
+
 class VideoGenerationPrompt(BaseModel):
     """The prompt for generating a video, separated into objective description and subjective intention."""
-    description: str = Field(description="A third-person narrative describing the scene: environment, actions, and dialogue.")
-    intention: str = Field(description="A first-person, internal monologue describing the character's thoughts, feelings, or motivation.")
+
+    description: str = Field(
+        description="A third-person narrative describing the scene: environment, actions, and dialogue."
+    )
+    intention: str = Field(
+        description="A first-person, internal monologue describing the character's thoughts, feelings, or motivation."
+    )
+
 
 class VideoBase(BaseModel):
     scheduled_time: datetime
@@ -83,9 +122,11 @@ class VideoBase(BaseModel):
     hashtags: Optional[List[str]] = None
     platform: str = "instagram"
 
+
 class VideoCreate(VideoBase):
     influencer_id: int
     sponsor_id: Optional[int] = None
+
 
 class Video(VideoBase):
     id: int
@@ -101,16 +142,20 @@ class Video(VideoBase):
     class Config:
         from_attributes = True
 
+
 class VideoGenerationRequest(BaseModel):
     influencer_id: int
     prompt: VideoGenerationPrompt
+
 
 class ScheduleBase(BaseModel):
     run_at: datetime
     is_active: bool = True
 
+
 class ScheduleCreate(ScheduleBase):
     video_params: VideoCreate
+
 
 class Schedule(ScheduleBase):
     id: int
@@ -122,6 +167,7 @@ class Schedule(ScheduleBase):
     class Config:
         from_attributes = True
 
+
 class SponsorBase(BaseModel):
     company_name: str
     brand_logo_url: Optional[str] = None
@@ -131,8 +177,10 @@ class SponsorBase(BaseModel):
     product_info: Optional[Dict[str, Any]] = None
     campaign_details: Optional[Dict[str, Any]] = None
 
+
 class SponsorCreate(SponsorBase):
     pass
+
 
 class Sponsor(SponsorBase):
     id: int
@@ -143,13 +191,16 @@ class Sponsor(SponsorBase):
     class Config:
         from_attributes = True
 
+
 class SponsorMatchBase(BaseModel):
     influencer_id: int
     sponsor_id: int
     proposal_details: Optional[Dict[str, Any]] = None
 
+
 class SponsorMatchCreate(SponsorMatchBase):
     pass
+
 
 class SponsorMatch(SponsorMatchBase):
     id: int
@@ -160,6 +211,7 @@ class SponsorMatch(SponsorMatchBase):
 
     class Config:
         from_attributes = True
+
 
 class ImageGenerateRequest(BaseModel):
     prompt: str

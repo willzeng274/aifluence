@@ -2,13 +2,14 @@
 
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import StatsChart from "@/components/StatsChart";
 import EngagementGrid from "@/components/EngagementGrid";
 import "react-calendar/dist/Calendar.css";
 import ScheduleCalendar, {
 	Schedule,
 } from "@/components/shared/ScheduleCalendar";
+import AddSponsoredPostModal from "@/components/modals/AddSponsoredPostModal";
 
 // Define video and influencer types based on API response
 interface Video {
@@ -74,50 +75,101 @@ const InfluencerProfilePage = () => {
 	const params = useParams();
 	const router = useRouter();
 	const [influencer, setInfluencer] = useState<Influencer | null>(null);
+	const [isModalOpen, setIsModalOpen] = useState(false);
+	const [selectedDateForPost, setSelectedDateForPost] = useState<Date | null>(
+		null
+	);
 
-	useEffect(() => {
+	const fetchInfluencerData = useCallback(async () => {
 		const influencerId = params.id;
 		if (!influencerId) return;
 
-		const fetchInfluencerData = async () => {
-			try {
-				const influencerRes = await fetch(
-					`http://localhost:8000/influencer/${influencerId}`
-				);
-				if (!influencerRes.ok) {
-					console.error("Failed to fetch influencer");
-					setInfluencer(null);
-					return;
-				}
-				const influencerData: Influencer = await influencerRes.json();
-
-				const videoRes = await fetch(
-					`http://localhost:8000/influencer/${influencerId}/videos`
-				);
-				let videos: Video[] = [];
-				if (videoRes.ok) {
-					const videoData = await videoRes.json();
-					if (videoData.videos && videoData.videos.length > 0) {
-						videos = videoData.videos;
-					}
-				}
-
-				const fullInfluencerData: Influencer = {
-					...influencerData,
-					videos,
-					followers: `${(Math.random() * 5).toFixed(1)}M`,
-					engagement: `${(Math.random() * 5).toFixed(2)}%`,
-				};
-
-				setInfluencer(fullInfluencerData);
-			} catch (error) {
-				console.error("Error fetching influencer data:", error);
+		try {
+			const influencerRes = await fetch(
+				`http://localhost:8000/influencer/${influencerId}`
+			);
+			if (!influencerRes.ok) {
+				console.error("Failed to fetch influencer");
 				setInfluencer(null);
+				return;
 			}
+			const influencerData: Influencer = await influencerRes.json();
+
+			const videoRes = await fetch(
+				`http://localhost:8000/influencer/${influencerId}/videos`
+			);
+			let videos: Video[] = [];
+			if (videoRes.ok) {
+				const videoData = await videoRes.json();
+				if (videoData.videos && videoData.videos.length > 0) {
+					videos = videoData.videos;
+				}
+			}
+
+			const fullInfluencerData: Influencer = {
+				...influencerData,
+				videos,
+				followers: `${(Math.random() * 5).toFixed(1)}M`,
+				engagement: `${(Math.random() * 5).toFixed(2)}%`,
+			};
+
+			setInfluencer(fullInfluencerData);
+		} catch (error) {
+			console.error("Error fetching influencer data:", error);
+			setInfluencer(null);
+		}
+	}, [params.id]);
+
+	useEffect(() => {
+		fetchInfluencerData();
+	}, [fetchInfluencerData]);
+
+	const handleAddPost = (date: Date) => {
+		setSelectedDateForPost(date);
+		setIsModalOpen(true);
+	};
+
+	const handleCloseModal = () => {
+		setIsModalOpen(false);
+		setSelectedDateForPost(null);
+	};
+
+	const handleScheduleSubmit = async (postData: any) => {
+		if (!influencer) return;
+
+		const payload = {
+			...postData,
+			video_params: {
+				...postData.video_params,
+				influencer_id: influencer.id,
+			},
 		};
 
-		fetchInfluencerData();
-	}, [params.id]);
+		try {
+			const response = await fetch("http://localhost:8000/schedule", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(payload),
+			});
+
+			if (response.ok) {
+				alert("Post scheduled successfully!");
+				handleCloseModal();
+				// Refresh data to show the new post
+				await fetchInfluencerData();
+			} else {
+				const error = await response.json();
+				alert(
+					`Failed to schedule post: ${
+						error.detail || "Unknown error"
+					}`
+				);
+			}
+		} catch (error) {
+			console.error("Error scheduling post:", error);
+			alert("An error occurred while scheduling the post.");
+		}
+	};
 
 	if (!influencer) {
 		return (
@@ -230,11 +282,23 @@ const InfluencerProfilePage = () => {
 							<h3 className='text-sm text-white/50 uppercase tracking-widest mb-4'>
 								Content Schedule
 							</h3>
-							<ScheduleCalendar schedule={scheduleByDay} />
+							<ScheduleCalendar
+								schedule={scheduleByDay}
+								onAddPost={handleAddPost}
+							/>
 						</div>
 					</div>
 				</div>
 			</main>
+
+			{selectedDateForPost && (
+				<AddSponsoredPostModal
+					isOpen={isModalOpen}
+					onClose={handleCloseModal}
+					onSubmit={handleScheduleSubmit}
+					date={selectedDateForPost}
+				/>
+			)}
 
 			<style jsx>{`
 				@keyframes page-enter {
