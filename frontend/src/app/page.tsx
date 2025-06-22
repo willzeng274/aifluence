@@ -1,19 +1,57 @@
 "use client";
 
 import InfluencerCarousel from "@/components/InfluencerCarousel";
-import { influencers as influencersData } from "@/constants/influencers";
 import React, { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import InfluencerDetailsSidebar from "@/components/InfluencerDetailsSidebar";
 import { useRouter } from "next/navigation";
 
-// Define influencer type for state
-type Influencer = (typeof influencersData)[0];
+// Define video type based on API response
+interface Video {
+	video_id: number;
+	schedule_id: number;
+	scheduled_time: string;
+	content_type: "story" | "reel";
+	status: string;
+	caption: string;
+	hashtags: string[];
+	is_active: boolean;
+	has_sponsor: boolean;
+}
+
+// Define influencer type based on API response
+interface Influencer {
+	id: number;
+	name: string;
+	face_image_url: string;
+	persona: {
+		background: string;
+		goals: string[];
+		tone: string;
+	};
+	mode: string;
+	audience_targeting: {
+		age_range: [number, number];
+		gender: string;
+		interests: string[];
+		region: string;
+	};
+	growth_phase_enabled: boolean;
+	growth_intensity: number;
+	posting_frequency: {
+		story_interval_hours: number;
+		reel_interval_hours: number;
+	} | null;
+	is_active: boolean;
+	created_at: string;
+	updated_at: string;
+	videos?: Video[];
+	followers?: string;
+	engagement?: string;
+}
 
 const Home = () => {
-	const [influencers, setInfluencers] =
-		useState<Influencer[]>(influencersData);
-
+	const [influencers, setInfluencers] = useState<Influencer[]>([]);
 	const [selectedInfluencer, setSelectedInfluencer] =
 		useState<Influencer | null>(null);
 	const [isExiting, setIsExiting] = useState(false);
@@ -42,9 +80,57 @@ const Home = () => {
 	};
 
 	const handleFetchInfluencers = async () => {
-		// TODO: API_PLACEHOLDER_GET Fetch influencers from API
-		// const data = await response.json();
-		// setInfluencers(data);
+		try {
+			const response = await fetch(
+				"http://localhost:8000/influencers?skip=0&limit=100"
+			);
+			if (response.ok) {
+				const influencersData = await response.json();
+
+				const influencersWithVideos = await Promise.all(
+					influencersData.map(async (influencer: Influencer) => {
+						try {
+							const videoResponse = await fetch(
+								`http://localhost:8000/influencer/${influencer.id}/videos`
+							);
+							if (videoResponse.ok) {
+								const videoData = await videoResponse.json();
+								if (
+									videoData.videos &&
+									videoData.videos.length > 0
+								) {
+									return {
+										...influencer,
+										videos: videoData.videos,
+									};
+								}
+							}
+							return null;
+						} catch (error) {
+							console.error(
+								`Failed to fetch videos for influencer ${influencer.id}`,
+								error
+							);
+							return null;
+						}
+					})
+				);
+
+				const filteredInfluencers = influencersWithVideos
+					.filter((i): i is Influencer => i !== null)
+					.map((influencer) => ({
+						...influencer,
+						followers: `${(Math.random() * 5).toFixed(1)}M`,
+						engagement: `${(Math.random() * 5).toFixed(2)}%`,
+					}));
+
+				setInfluencers(filteredInfluencers);
+			} else {
+				console.error("Failed to fetch influencers");
+			}
+		} catch (error) {
+			console.error("Error fetching influencers:", error);
+		}
 	};
 
 	useEffect(() => {

@@ -100,13 +100,10 @@ const CreateInfluencerPage = () => {
 		const apiPayload: any = { ...apiPayloadBase };
 
 		// TODO: This is a temporary fix to handle the company schedule. Modify backend to handle this.
-		if (apiPayload.mode === "company" && schedule?.postFrequencyHours > 0) {
-			apiPayload.posting_frequency = {
-				posts_per_week: Math.round(
-					(7 * 24) / schedule.postFrequencyHours
-				),
-			};
-		}
+		apiPayload.posting_frequency = {
+			story_interval_hours: schedule.story_interval_hours,
+			reel_interval_hours: schedule.postFrequencyHours,
+		};
 
 		console.log("Sending payload to API:", apiPayload);
 
@@ -185,6 +182,7 @@ const CreateInfluencerPage = () => {
 							<Step2AvatarGeneration
 								onBack={handleBack}
 								onSubmit={handleAvatarSubmit}
+								formData={formData}
 							/>
 						</WizardStep>
 					)}

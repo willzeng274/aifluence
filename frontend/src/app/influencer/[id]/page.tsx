@@ -1,6 +1,5 @@
 "use client";
 
-import { influencers } from "@/constants/influencers";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import React, { useEffect, useState } from "react";
@@ -10,6 +9,49 @@ import "react-calendar/dist/Calendar.css";
 import ScheduleCalendar, {
 	Schedule,
 } from "@/components/shared/ScheduleCalendar";
+
+// Define video and influencer types based on API response
+interface Video {
+	video_id: number;
+	schedule_id: number;
+	scheduled_time: string;
+	content_type: "story" | "reel";
+	status: string;
+	caption: string;
+	hashtags: string[];
+	is_active: boolean;
+	has_sponsor: boolean;
+}
+
+interface Influencer {
+	id: number;
+	name: string;
+	face_image_url: string;
+	persona: {
+		background: string;
+		goals: string[];
+		tone: string;
+	};
+	mode: string;
+	audience_targeting: {
+		age_range: [number, number];
+		gender: string;
+		interests: string[];
+		region: string;
+	};
+	growth_phase_enabled: boolean;
+	growth_intensity: number;
+	posting_frequency: {
+		story_interval_hours: number;
+		reel_interval_hours: number;
+	} | null;
+	is_active: boolean;
+	created_at: string;
+	updated_at: string;
+	videos?: Video[];
+	followers?: string;
+	engagement?: string;
+}
 
 const ChevronLeftIcon = (props: React.SVGProps<SVGSVGElement>) => (
 	<svg
@@ -31,18 +73,50 @@ const ChevronLeftIcon = (props: React.SVGProps<SVGSVGElement>) => (
 const InfluencerProfilePage = () => {
 	const params = useParams();
 	const router = useRouter();
-	const [influencer, setInfluencer] = useState<
-		((typeof influencers)[0] & { schedule?: Schedule }) | null
-	>(null);
+	const [influencer, setInfluencer] = useState<Influencer | null>(null);
 
 	useEffect(() => {
 		const influencerId = params.id;
-		const foundInfluencer = influencers.find(
-			(inf) => inf.id.toString() === influencerId
-		);
-		if (foundInfluencer) {
-			setInfluencer(foundInfluencer);
-		}
+		if (!influencerId) return;
+
+		const fetchInfluencerData = async () => {
+			try {
+				const influencerRes = await fetch(
+					`http://localhost:8000/influencer/${influencerId}`
+				);
+				if (!influencerRes.ok) {
+					console.error("Failed to fetch influencer");
+					setInfluencer(null);
+					return;
+				}
+				const influencerData: Influencer = await influencerRes.json();
+
+				const videoRes = await fetch(
+					`http://localhost:8000/influencer/${influencerId}/videos`
+				);
+				let videos: Video[] = [];
+				if (videoRes.ok) {
+					const videoData = await videoRes.json();
+					if (videoData.videos && videoData.videos.length > 0) {
+						videos = videoData.videos;
+					}
+				}
+
+				const fullInfluencerData: Influencer = {
+					...influencerData,
+					videos,
+					followers: `${(Math.random() * 5).toFixed(1)}M`,
+					engagement: `${(Math.random() * 5).toFixed(2)}%`,
+				};
+
+				setInfluencer(fullInfluencerData);
+			} catch (error) {
+				console.error("Error fetching influencer data:", error);
+				setInfluencer(null);
+			}
+		};
+
+		fetchInfluencerData();
 	}, [params.id]);
 
 	if (!influencer) {
@@ -53,13 +127,32 @@ const InfluencerProfilePage = () => {
 		);
 	}
 
-	const scheduledDays = (influencer.schedule || {}) as Schedule;
+	const scheduleByDay = (influencer.videos || []).reduce(
+		(acc: Record<string, any[]>, video: any) => {
+			const date = new Date(video.scheduled_time)
+				.toISOString()
+				.split("T")[0];
+			if (!acc[date]) {
+				acc[date] = [];
+			}
+			acc[date].push({
+				type: video.content_type,
+				time: new Date(video.scheduled_time).toLocaleTimeString([], {
+					hour: "2-digit",
+					minute: "2-digit",
+				}),
+				description: video.caption,
+			});
+			return acc;
+		},
+		{}
+	);
 
 	return (
 		<div className='min-h-screen bg-[#111111] text-white font-sans animate-page-enter overflow-auto'>
 			<div className='absolute inset-0 z-0'>
 				<Image
-					src={influencer.image}
+					src={influencer.face_image_url}
 					alt={influencer.name}
 					layout='fill'
 					className='object-cover opacity-10 blur-2xl scale-125'
@@ -77,7 +170,7 @@ const InfluencerProfilePage = () => {
 						Back to Selection
 					</button>
 					<p className='px-3 py-1 bg-white/10 rounded-full text-sm font-medium'>
-						{influencer.category}
+						{influencer.mode}
 					</p>
 				</header>
 
@@ -86,7 +179,7 @@ const InfluencerProfilePage = () => {
 					<div className='lg:col-span-1 flex flex-col items-center lg:items-start text-center lg:text-left animate-fade-in-right'>
 						<div className='relative w-48 h-48 mb-6 rounded-full overflow-hidden shadow-2xl'>
 							<Image
-								src={influencer.image}
+								src={influencer.face_image_url}
 								alt={influencer.name}
 								fill
 								className='object-cover'
@@ -96,14 +189,12 @@ const InfluencerProfilePage = () => {
 							{influencer.name}
 						</h1>
 						<p className='text-lg text-white/60 mt-1'>
-							{influencer.handle}
+							@
+							{influencer.name.toLowerCase().replace(/\\s+/g, "")}
 						</p>
 						<p className='text-white/80 leading-relaxed mt-4 max-w-sm'>
-							{influencer.bio}
+							{influencer.persona.background}
 						</p>
-						<button className='mt-6 w-full max-w-xs py-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg font-semibold text-base hover:opacity-90 transition-opacity'>
-							Send Message
-						</button>
 					</div>
 
 					{/* Right Column - Stats */}
@@ -120,21 +211,18 @@ const InfluencerProfilePage = () => {
 							<div className='bg-white/5 p-6 rounded-2xl'>
 								<h3 className='text-sm text-white/50 uppercase tracking-widest mb-2 flex justify-between items-baseline'>
 									<span>Engagement</span>
-									<span className='text-xl font-bold text-white'>
-										{influencer.engagement}
-									</span>
+									{influencer.engagement && (
+										<span className='text-xl font-bold text-white'>
+											{influencer.engagement}
+										</span>
+									)}
 								</h3>
-								<EngagementGrid
-									engagement={influencer.engagement}
-								/>
+								{influencer.engagement && (
+									<EngagementGrid
+										engagement={influencer.engagement}
+									/>
+								)}
 							</div>
-						</div>
-
-						<div className='bg-white/5 p-6 rounded-2xl'>
-							<h3 className='text-sm text-white/50 uppercase tracking-widest mb-4'>
-								Follower Growth (6 Months)
-							</h3>
-							<StatsChart data={influencer.followerHistory} />
 						</div>
 
 						{/* --- Schedule Section --- */}
@@ -142,7 +230,7 @@ const InfluencerProfilePage = () => {
 							<h3 className='text-sm text-white/50 uppercase tracking-widest mb-4'>
 								Content Schedule
 							</h3>
-							<ScheduleCalendar schedule={scheduledDays} />
+							<ScheduleCalendar schedule={scheduleByDay} />
 						</div>
 					</div>
 				</div>

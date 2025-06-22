@@ -3,18 +3,32 @@
 import Image from "next/image";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 
-type Influencer = {
+interface Influencer {
 	id: number;
-	image: string;
 	name: string;
-	handle: string;
-	followers: string;
-	category: string;
-	verified: boolean;
-	engagement: string;
-	bio: string;
-	followerHistory: { month: string; followers: number }[];
-};
+	face_image_url: string;
+	persona: {
+		background: string;
+		goals: string[];
+		tone: string;
+	};
+	mode: string;
+	audience_targeting: {
+		age_range: [number, number];
+		gender: string;
+		interests: string[];
+		region: string;
+	};
+	growth_phase_enabled: boolean;
+	growth_intensity: number;
+	posting_frequency: {
+		story_interval_hours: number;
+		reel_interval_hours: number;
+	} | null;
+	is_active: boolean;
+	created_at: string;
+	updated_at: string;
+}
 
 type Props = {
 	influencers: Influencer[];
@@ -79,7 +93,6 @@ const InfluencerCarousel = ({
 			document.body.style.userSelect = "auto";
 		}
 	}, [onCardClick]);
-
 
 	useEffect(() => {
 		window.addEventListener("mousemove", handleDragging);
@@ -151,7 +164,7 @@ const InfluencerCarousel = ({
 										fill
 										alt={influencer.name}
 										className='w-full h-full object-cover'
-										src={influencer.image}
+										src={influencer.face_image_url}
 										draggable={false}
 									/>
 									<div className='absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent'></div>

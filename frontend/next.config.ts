@@ -8,6 +8,10 @@ const nextConfig: NextConfig = {
 				protocol: "https",
 				hostname: "*", // Allow images from all domains
 			},
+			{
+				protocol: "http",
+				hostname: "*", // Allow images from all domains
+			},
 		],
 	},
 };
