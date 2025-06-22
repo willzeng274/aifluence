@@ -6,6 +6,7 @@ interface Influencer {
 	id: number;
 	name: string;
 	face_image_url: string;
+	life_story: string | null;
 	persona: {
 		background: string;
 		goals: string[];
@@ -136,6 +137,18 @@ const InfluencerDetailsSidebar = ({
 						</p>
 					</div>
 				</div>
+
+				{/* Life Story */}
+				{influencer.life_story && (
+					<div className='text-left w-full mt-6'>
+						<h4 className='font-semibold text-sm mb-2 text-white/80'>
+							Life Story
+						</h4>
+						<p className='text-white/60 text-sm leading-relaxed line-clamp-4'>
+							{influencer.life_story}
+						</p>
+					</div>
+				)}
 
 				{/* Bio */}
 				<div className='text-left w-full mt-6'>

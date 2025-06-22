@@ -286,10 +286,12 @@ Example:
             caption = caption_data.get("caption", description)
             generated_hashtags = caption_data.get("hashtags", [])
 
+            all_hashtags = []
             if hashtags:
-                final_hashtags = " ".join(f"#{tag}" for tag in hashtags + generated_hashtags)
-            else:
-                final_hashtags = " ".join(f"#{tag}" for tag in generated_hashtags)
+                all_hashtags.extend(hashtags)
+            all_hashtags.extend(generated_hashtags)
+            
+            final_hashtags = " ".join(all_hashtags)
             
             full_caption = f"{caption} {final_hashtags}".strip()
             logger.info("Generated caption with Claude API")
@@ -310,7 +312,7 @@ Example:
         logger.warning("Using simple caption generator")
         caption_text = prompt_data.get("description", "Cool new video!")
         if hashtags:
-            hashtag_str = " ".join([f"#{h}" for h in hashtags])
+            hashtag_str = " ".join(hashtags)
             return f"{caption_text} {hashtag_str}"
         return caption_text
 

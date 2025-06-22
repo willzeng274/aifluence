@@ -3,13 +3,10 @@
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import React, { useEffect, useState, useCallback } from "react";
-import StatsChart from "@/components/StatsChart";
-import EngagementGrid from "@/components/EngagementGrid";
 import "react-calendar/dist/Calendar.css";
-import ScheduleCalendar, {
-	Schedule,
-} from "@/components/shared/ScheduleCalendar";
 import AddSponsoredPostModal from "@/components/modals/AddSponsoredPostModal";
+import ContentTimeline from "@/components/shared/ContentTimeline";
+import ScheduleCalendar from "@/components/shared/ScheduleCalendar";
 
 // Define video and influencer types based on API response
 interface Video {
@@ -28,6 +25,7 @@ interface Influencer {
 	id: number;
 	name: string;
 	face_image_url: string;
+	life_story: string | null;
 	persona: {
 		background: string;
 		goals: string[];
@@ -71,6 +69,23 @@ const ChevronLeftIcon = (props: React.SVGProps<SVGSVGElement>) => (
 	</svg>
 );
 
+const Section = ({
+	children,
+	className,
+	delay = 0,
+}: {
+	children: React.ReactNode;
+	className?: string;
+	delay?: number;
+}) => (
+	<div
+		className={`animate-reveal ${className}`}
+		style={{ animationDelay: `${delay}ms` }}
+	>
+		{children}
+	</div>
+);
+
 const InfluencerProfilePage = () => {
 	const params = useParams();
 	const router = useRouter();
@@ -78,6 +93,9 @@ const InfluencerProfilePage = () => {
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [selectedDateForPost, setSelectedDateForPost] = useState<Date | null>(
 		null
+	);
+	const [viewMode, setViewMode] = useState<"timeline" | "calendar">(
+		"timeline"
 	);
 
 	const fetchInfluencerData = useCallback(async () => {
@@ -155,7 +173,6 @@ const InfluencerProfilePage = () => {
 			if (response.ok) {
 				alert("Post scheduled successfully!");
 				handleCloseModal();
-				// Refresh data to show the new post
 				await fetchInfluencerData();
 			} else {
 				const error = await response.json();
@@ -201,92 +218,204 @@ const InfluencerProfilePage = () => {
 	);
 
 	return (
-		<div className='min-h-screen bg-[#111111] text-white font-sans animate-page-enter overflow-auto'>
+		<div className='min-h-screen bg-[#111111] text-white font-sans overflow-x-hidden'>
 			<div className='absolute inset-0 z-0'>
 				<Image
 					src={influencer.face_image_url}
 					alt={influencer.name}
 					layout='fill'
-					className='object-cover opacity-10 blur-2xl scale-125'
+					className='object-cover opacity-10 blur-3xl scale-150'
 				/>
-				<div className='absolute inset-0 bg-gradient-to-b from-black/30 via-black/80 to-[#111111]'></div>
+				<div className='absolute inset-0 bg-gradient-to-b from-black/10 via-black/60 to-[#111111]' />
+				<div className='absolute inset-0 bg-[url(/grid.svg)] opacity-5' />
 			</div>
 
-			<main className='relative z-10 p-8 md:p-12'>
-				<header className='flex items-center justify-between mb-12 animate-fade-in-down'>
+			<main className='relative z-10 p-8 md:p-12 lg:p-16'>
+				<header className='flex items-center justify-between mb-16 md:mb-24 animate-fade-in-down'>
 					<button
 						onClick={() => router.back()}
-						className='p-3 rounded-full hover:bg-white/10 transition-colors flex items-center gap-2 text-sm'
+						className='p-2 hover:bg-white/10 transition-colors flex items-center gap-2 text-sm uppercase tracking-widest'
 					>
 						<ChevronLeftIcon className='w-5 h-5' />
-						Back to Selection
+						<span>Directory</span>
 					</button>
-					<p className='px-3 py-1 bg-white/10 rounded-full text-sm font-medium'>
-						{influencer.mode}
+					<p className='border border-white/20 px-3 py-1 text-sm font-medium uppercase tracking-widest'>
+						{influencer.mode} Mode
 					</p>
 				</header>
 
-				<div className='grid grid-cols-1 lg:grid-cols-3 gap-8'>
-					{/* Left Column - Profile */}
-					<div className='lg:col-span-1 flex flex-col items-center lg:items-start text-center lg:text-left animate-fade-in-right'>
-						<div className='relative w-48 h-48 mb-6 rounded-full overflow-hidden shadow-2xl'>
-							<Image
-								src={influencer.face_image_url}
-								alt={influencer.name}
-								fill
-								className='object-cover'
-							/>
-						</div>
-						<h1 className='text-4xl md:text-5xl font-bold tracking-tighter'>
-							{influencer.name}
-						</h1>
-						<p className='text-lg text-white/60 mt-1'>
-							@
-							{influencer.name.toLowerCase().replace(/\\s+/g, "")}
-						</p>
-						<p className='text-white/80 leading-relaxed mt-4 max-w-sm'>
-							{influencer.persona.background}
-						</p>
+				<div className='grid grid-cols-1 lg:grid-cols-3 gap-16'>
+					{/* Left Column */}
+					<div className='lg:col-span-1 space-y-16'>
+						<Section delay={0}>
+							<div className='relative w-full h-[60vh] max-h-[700px] min-h-[500px] bg-white/5'>
+								<Image
+									src={influencer.face_image_url}
+									alt={influencer.name}
+									fill
+									className='object-cover'
+								/>
+							</div>
+							<div className='mt-6'>
+								<p className='text-white/60 text-lg'>
+									@
+									{influencer.name
+										.toLowerCase()
+										.replace(/\\s+/g, "")}
+								</p>
+								<h1 className='text-6xl md:text-8xl font-bold tracking-tighter uppercase'>
+									{influencer.name}
+								</h1>
+							</div>
+						</Section>
+
+						<Section
+							delay={200}
+							className='border-y border-white/10 py-8'
+						>
+							<h2 className='text-sm text-white/50 uppercase tracking-widest mb-4'>
+								Audience Profile
+							</h2>
+							<div className='space-y-4'>
+								<div className='flex justify-between items-baseline'>
+									<span className='text-white/70'>
+										Region:
+									</span>
+									<span className='font-mono'>
+										{influencer.audience_targeting.region}
+									</span>
+								</div>
+								<div className='flex justify-between items-baseline'>
+									<span className='text-white/70'>
+										Gender:
+									</span>
+									<span className='font-mono'>
+										{influencer.audience_targeting.gender}
+									</span>
+								</div>
+								<div className='flex justify-between items-baseline'>
+									<span className='text-white/70'>
+										Age Range:
+									</span>
+									<span className='font-mono'>
+										{
+											influencer.audience_targeting
+												.age_range[0]
+										}
+										-
+										{
+											influencer.audience_targeting
+												.age_range[1]
+										}
+									</span>
+								</div>
+								<div className='pt-4'>
+									<h3 className='text-white/70 mb-2'>
+										Interests:
+									</h3>
+									<div className='flex flex-wrap gap-2'>
+										{influencer.audience_targeting.interests.map(
+											(interest) => (
+												<span
+													key={interest}
+													className='px-2 py-1 bg-white/5 border border-white/10 text-xs'
+												>
+													{interest}
+												</span>
+											)
+										)}
+									</div>
+								</div>
+							</div>
+						</Section>
+
+						<Section delay={300}>
+							<h2 className='text-sm text-white/50 uppercase tracking-widest mb-4'>
+								Persona
+							</h2>
+							<p className='text-white/80 leading-relaxed font-light'>
+								{influencer.persona.background}
+							</p>
+						</Section>
 					</div>
 
-					{/* Right Column - Stats */}
-					<div className='lg:col-span-2 flex flex-col gap-8 animate-fade-in-left'>
-						<div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-							<div className='bg-white/5 p-6 rounded-2xl'>
+					{/* Right Column */}
+					<div className='lg:col-span-2 space-y-16'>
+						<Section
+							delay={100}
+							className='grid grid-cols-1 md:grid-cols-2 gap-8 border-y border-white/10 py-8'
+						>
+							<div className='text-center'>
 								<h3 className='text-sm text-white/50 uppercase tracking-widest mb-2'>
 									Followers
 								</h3>
-								<p className='text-4xl font-bold'>
+								<p className='text-6xl font-light tracking-tighter'>
 									{influencer.followers}
 								</p>
 							</div>
-							<div className='bg-white/5 p-6 rounded-2xl'>
-								<h3 className='text-sm text-white/50 uppercase tracking-widest mb-2 flex justify-between items-baseline'>
-									<span>Engagement</span>
-									{influencer.engagement && (
-										<span className='text-xl font-bold text-white'>
-											{influencer.engagement}
-										</span>
-									)}
+							<div className='text-center'>
+								<h3 className='text-sm text-white/50 uppercase tracking-widest mb-2'>
+									Engagement
 								</h3>
-								{influencer.engagement && (
-									<EngagementGrid
-										engagement={influencer.engagement}
-									/>
-								)}
+								<p className='text-6xl font-light tracking-tighter'>
+									{influencer.engagement}
+								</p>
 							</div>
-						</div>
+						</Section>
 
-						{/* --- Schedule Section --- */}
-						<div className='bg-white/5 p-6 rounded-2xl md:col-span-2'>
-							<h3 className='text-sm text-white/50 uppercase tracking-widest mb-4'>
-								Content Schedule
-							</h3>
-							<ScheduleCalendar
-								schedule={scheduleByDay}
-								onAddPost={handleAddPost}
-							/>
-						</div>
+						{influencer.life_story && (
+							<Section delay={400}>
+								<h2 className='text-sm text-white/50 uppercase tracking-widest mb-4 text-center'>
+									Life Story
+								</h2>
+								<p className='text-white/70 leading-loose whitespace-pre-wrap text-lg font-light border-y border-white/10 py-8 px-4'>
+									{influencer.life_story}
+								</p>
+							</Section>
+						)}
+
+						<Section delay={500}>
+							<div className='flex justify-between items-center mb-4'>
+								<h2 className='text-sm text-white/50 uppercase tracking-widest'>
+									Content Plan
+								</h2>
+								<div className='flex items-center border border-white/20'>
+									<button
+										onClick={() => setViewMode("timeline")}
+										className={`px-3 py-1 text-xs uppercase transition-colors duration-200 ease-in-out ${
+											viewMode === "timeline"
+												? "bg-white text-black"
+												: "bg-transparent text-white/50 hover:bg-white/10"
+										}`}
+									>
+										Timeline
+									</button>
+									<button
+										onClick={() => setViewMode("calendar")}
+										className={`px-3 py-1 text-xs uppercase transition-colors duration-200 ease-in-out ${
+											viewMode === "calendar"
+												? "bg-white text-black"
+												: "bg-transparent text-white/50 hover:bg-white/10"
+										}`}
+									>
+										Calendar
+									</button>
+								</div>
+							</div>
+							{viewMode === "timeline" ? (
+								<ContentTimeline
+									videos={influencer.videos || []}
+									onAddPost={handleAddPost}
+								/>
+							) : (
+								<div className='bg-black/20 p-2'>
+									<ScheduleCalendar
+										schedule={scheduleByDay}
+										onAddPost={handleAddPost}
+									/>
+								</div>
+							)}
+						</Section>
 					</div>
 				</div>
 			</main>
@@ -301,21 +430,6 @@ const InfluencerProfilePage = () => {
 			)}
 
 			<style jsx>{`
-				@keyframes page-enter {
-					from {
-						opacity: 0;
-						transform: translateX(50px);
-					}
-					to {
-						opacity: 1;
-						transform: translateX(0);
-					}
-				}
-				.animate-page-enter {
-					animation: page-enter 0.6s
-						cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-				}
-
 				@keyframes fade-in-down {
 					from {
 						opacity: 0;
@@ -326,36 +440,24 @@ const InfluencerProfilePage = () => {
 						transform: translateY(0);
 					}
 				}
-				@keyframes fade-in-right {
-					from {
-						opacity: 0;
-						transform: translateX(-20px);
-					}
-					to {
-						opacity: 1;
-						transform: translateX(0);
-					}
-				}
-				@keyframes fade-in-left {
-					from {
-						opacity: 0;
-						transform: translateX(20px);
-					}
-					to {
-						opacity: 1;
-						transform: translateX(0);
-					}
-				}
 				.animate-fade-in-down {
 					animation: fade-in-down 0.6s 0.3s ease-out forwards;
 					opacity: 0;
 				}
-				.animate-fade-in-right {
-					animation: fade-in-right 0.6s 0.5s ease-out forwards;
-					opacity: 0;
+
+				@keyframes reveal {
+					from {
+						opacity: 0;
+						transform: translateY(40px) scale(0.98);
+					}
+					to {
+						opacity: 1;
+						transform: translateY(0) scale(1);
+					}
 				}
-				.animate-fade-in-left {
-					animation: fade-in-left 0.6s 0.7s ease-out forwards;
+				.animate-reveal {
+					animation: reveal 0.8s
+						cubic-bezier(0.22, 1, 0.36, 1) forwards;
 					opacity: 0;
 				}
 			`}</style>
@@ -364,3 +466,6 @@ const InfluencerProfilePage = () => {
 };
 
 export default InfluencerProfilePage;
+
+
+
