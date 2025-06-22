@@ -11,6 +11,7 @@ import Step2DefineIdentity from "@/components/creation-flow/Step2_DefineIdentity
 import Step2AvatarGeneration from "@/components/creation-flow/Step2_AvatarGeneration";
 import Step3SetSchedule from "@/components/creation-flow/Step3SetSchedule";
 import Step3CompanySchedule from "@/components/creation-flow/Step3_CompanySchedule";
+import Step3GrowthAndSocials from "@/components/creation-flow/Step3_GrowthAndSocials";
 
 const WizardStep = ({ children }: { children: React.ReactNode }) => (
 	<motion.div
@@ -24,28 +25,50 @@ const WizardStep = ({ children }: { children: React.ReactNode }) => (
 	</motion.div>
 );
 
+type Tone = "energetic" | "casual" | "professional";
+type AudienceGender = "all" | "male" | "female" | "other";
+type AudienceRegion =
+	| "North America"
+	| "Europe"
+	| "Asia"
+	| "South America"
+	| "Africa"
+	| "Australia"
+	| "Other";
+
 type FormData = {
-	influencerType?: InfluencerType;
-	identity?: any;
-	avatar?: { description: string; avatarUrl: string };
-	schedule?: any;
+	mode: InfluencerType;
+	name: string;
+	face_image_url: string;
+	background_info: string;
+	goals: string[];
+	tone: Tone;
+	audience_age_range: [number, number];
+	audience_gender: AudienceGender;
+	audience_interests: string[];
+	audience_region: AudienceRegion;
+	growth_phase_enabled: boolean;
+	growth_intensity: number;
+	instagram_username?: string;
+	instagram_password?: string;
+	schedule: any;
 };
 
 const CreateInfluencerPage = () => {
 	const router = useRouter();
 	const [step, setStep] = useState(1);
-	const [formData, setFormData] = useState<FormData>({});
+	const [formData, setFormData] = useState<Partial<FormData>>({});
 
 	const handleNext = () => setStep((prev) => prev + 1);
 	const handleBack = () => setStep((prev) => prev - 1);
 
 	const handleSelectType = (type: InfluencerType) => {
-		setFormData({ ...formData, influencerType: type });
+		setFormData({ ...formData, mode: type });
 		handleNext();
 	};
 
-	const handleDefineIdentity = (data: any) => {
-		setFormData({ ...formData, identity: data });
+	const handleDefineIdentity = (data: Partial<FormData>) => {
+		setFormData({ ...formData, ...data });
 		handleNext();
 	};
 
@@ -53,18 +76,71 @@ const CreateInfluencerPage = () => {
 		description: string;
 		avatarUrl: string;
 	}) => {
-		setFormData({ ...formData, avatar: data });
+		setFormData({ ...formData, face_image_url: data.avatarUrl });
 		handleNext();
 	};
 
-	const handleSubmit = (data: any) => {
+	const handleGrowthAndSocialsSubmit = (data: Partial<FormData>) => {
+		setFormData({ ...formData, ...data });
+		handleNext();
+	};
+
+	const handleSubmit = async (data: any) => {
 		const finalData = { ...formData, schedule: data };
 		setFormData(finalData);
-		console.log("Final Influencer Data:", finalData);
-		handleNext();
+
+		// Prepare payload for API based on documentation
+		const { schedule, ...apiPayloadBase } = finalData;
+		const apiPayload: any = { ...apiPayloadBase };
+
+		// TODO: This is a temporary fix to handle the company schedule. Modify backend to handle this.
+		if (apiPayload.mode === "company" && schedule?.postFrequencyHours > 0) {
+			apiPayload.posting_frequency = {
+				posts_per_week: Math.round(
+					(7 * 24) / schedule.postFrequencyHours
+				),
+			};
+		}
+
+		console.log("Sending payload to API:", apiPayload);
+
+		try {
+			const response = await fetch(
+				"http://localhost:8000/sorcerer/init",
+				{
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify(apiPayload),
+				}
+			);
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				console.error("API Error:", errorData);
+				alert(
+					`Error creating influencer: ${
+						errorData.detail || "An unknown error occurred."
+					}`
+				);
+				return;
+			}
+
+			const responseData = await response.json();
+			console.log("API Success:", responseData);
+
+			// On success, proceed to the final "Setup Complete!" screen
+			handleNext();
+		} catch (error) {
+			console.error("Failed to connect to API server.", error);
+			alert(
+				"Failed to connect to the API server. Please ensure it's running and accessible."
+			);
+		}
 	};
 
-	const influencerType = formData.influencerType;
+	const mode = formData.mode;
 
 	return (
 		<div className='min-h-screen w-full bg-[#111111] text-white flex items-center justify-center p-8 overflow-hidden'>
@@ -78,10 +154,10 @@ const CreateInfluencerPage = () => {
 							<Step1ChooseType onSelectType={handleSelectType} />
 						</WizardStep>
 					)}
-					{step === 2 && influencerType && (
+					{step === 2 && mode && (
 						<WizardStep key='step2'>
 							<Step2DefineIdentity
-								influencerType={influencerType}
+								influencerType={mode}
 								onBack={handleBack}
 								onSubmit={handleDefineIdentity}
 							/>
@@ -95,25 +171,33 @@ const CreateInfluencerPage = () => {
 							/>
 						</WizardStep>
 					)}
-					{step === 4 && influencerType === "lifestyle" && (
-						<WizardStep key='step4-lifestyle-schedule'>
+					{step === 4 && (
+						<WizardStep key='step4-growth'>
+							<Step3GrowthAndSocials
+								onBack={handleBack}
+								onSubmit={handleGrowthAndSocialsSubmit}
+							/>
+						</WizardStep>
+					)}
+					{step === 5 && mode === "lifestyle" && (
+						<WizardStep key='step5-lifestyle-schedule'>
 							<Step3SetSchedule
-								influencerType={influencerType}
+								influencerType={mode}
 								onBack={handleBack}
 								onSubmit={handleSubmit}
 							/>
 						</WizardStep>
 					)}
-					{step === 4 && influencerType === "company" && (
-						<WizardStep key='step4-company-schedule'>
+					{step === 5 && mode === "company" && (
+						<WizardStep key='step5-company-schedule'>
 							<Step3CompanySchedule
 								onBack={handleBack}
 								onSubmit={handleSubmit}
 							/>
 						</WizardStep>
 					)}
-					{step === 5 && (
-						<WizardStep key='step5'>
+					{step === 6 && (
+						<WizardStep key='step6'>
 							<div className='text-center'>
 								<h1 className='text-3xl font-bold'>
 									Setup Complete!

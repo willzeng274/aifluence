@@ -4,6 +4,7 @@ from typing import List, Optional
 import threading
 
 from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from database.models import get_db, Influencer, Video, Schedule, Sponsor, SponsorMatch, VideoStatus
@@ -14,6 +15,14 @@ from managers.ai_generator import ai_generator
 from utils.background_tasks import process_lifestyle_generation, process_bulk_schedule
 
 app = FastAPI(title="AI Influencer Manager API", version="2.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 ig_manager = InstagramManager()
 
@@ -26,6 +35,8 @@ def create_influencer_wizard(
     wizard_data: schemas.OnboardingWizardRequest,
     db: Session = Depends(get_db)
 ):
+    print(wizard_data)
+    
     """Create influencer through onboarding wizard"""
     persona = {
         "background": wizard_data.background_info,

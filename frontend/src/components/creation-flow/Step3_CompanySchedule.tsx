@@ -15,8 +15,7 @@ interface ScheduledItem {
 const generateSchedule = (
 	date: Date,
 	postFrequencyHours: number,
-	storyFrequencyHours: number,
-	randomness: number
+	storyFrequencyHours: number
 ): ScheduleData => {
 	const schedule: ScheduleData = {};
 	const year = date.getFullYear();
@@ -31,12 +30,6 @@ const generateSchedule = (
 
 		while (currentHour < totalHoursInMonth) {
 			let hourToPost = currentHour;
-
-			if (randomness > 0) {
-				const maxJitter = (frequencyHours / 2) * randomness;
-				const jitter = (Math.random() - 0.5) * 2 * maxJitter;
-				hourToPost += jitter;
-			}
 
 			if (hourToPost >= 0 && hourToPost < totalHoursInMonth) {
 				const dayOfMonth = Math.floor(hourToPost / 24) + 1;
@@ -128,28 +121,34 @@ const Step3CompanySchedule: React.FC<Step3CompanyScheduleProps> = ({
 	onBack,
 	onSubmit,
 }) => {
-	const [month] = useState(new Date());
+	const [startMonth] = useState(new Date());
 	const [postFrequencyHours, setPostFrequencyHours] = useState(24);
 	const [storyFrequencyHours, setStoryFrequencyHours] = useState(8);
-	const [randomness, setRandomness] = useState(0.5);
 
 	const [scheduledDays, setScheduledDays] = useState<ScheduleData>({});
 
 	useEffect(() => {
-		const newSchedule = generateSchedule(
-			month,
-			postFrequencyHours,
-			storyFrequencyHours,
-			randomness
-		);
-		setScheduledDays(newSchedule);
-	}, [month, postFrequencyHours, storyFrequencyHours, randomness]);
+		const combinedSchedule: ScheduleData = {};
+		for (let i = 0; i < 12; i++) {
+			const targetDate = new Date(
+				startMonth.getFullYear(),
+				startMonth.getMonth() + i,
+				1
+			);
+			const monthSchedule = generateSchedule(
+				targetDate,
+				postFrequencyHours,
+				storyFrequencyHours
+			);
+			Object.assign(combinedSchedule, monthSchedule);
+		}
+		setScheduledDays(combinedSchedule);
+	}, [startMonth, postFrequencyHours, storyFrequencyHours]);
 
 	const handleSubmit = () => {
 		onSubmit({
 			postFrequencyHours,
 			storyFrequencyHours,
-			randomness,
 			schedule: scheduledDays,
 		});
 	};
@@ -181,14 +180,6 @@ const Step3CompanySchedule: React.FC<Step3CompanyScheduleProps> = ({
 						setValue={setStoryFrequencyHours}
 						min={1}
 						max={48}
-					/>
-					<CustomSlider
-						label='Randomness (Salt)'
-						value={randomness}
-						setValue={setRandomness}
-						min={0}
-						max={1}
-						step={0.05}
 					/>
 
 					<div className='flex flex-wrap gap-x-4 gap-y-2 pt-4 text-xs'>
