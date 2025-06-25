@@ -94,6 +94,7 @@ const Step2DefineIdentity: React.FC<Step2DefineIdentityProps> = ({
 											: "e.g., EcoVibe"
 									}
 									required
+									autoComplete="off"
 								/>
 							</div>
 						</div>
