@@ -95,7 +95,6 @@ const Step2DefineIdentity: React.FC<Step2DefineIdentityProps> = ({
 									}
 									autoComplete="off"
 									required
-									autoComplete="off"
 								/>
 							</div>
 						</div>
