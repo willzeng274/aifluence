@@ -22,7 +22,3 @@ __pycache__/
 Thumbs.db
 
 .git/
-
-# Storage
-storage/
-storage/accounts.db
