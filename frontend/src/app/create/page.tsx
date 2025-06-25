@@ -59,6 +59,7 @@ const CreateInfluencerPage = () => {
 	const router = useRouter();
 	const [step, setStep] = useState(1);
 	const [formData, setFormData] = useState<Partial<FormData>>({});
+	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	const handleNext = () => setStep((prev) => prev + 1);
 	const handleBack = () => setStep((prev) => prev - 1);
@@ -92,22 +93,23 @@ const CreateInfluencerPage = () => {
 	};
 
 	const handleSubmit = async (data: any) => {
-		const finalData = { ...formData, schedule: data };
-		setFormData(finalData);
-
-		// Prepare payload for API based on documentation
-		const { schedule, ...apiPayloadBase } = finalData;
-		const apiPayload: any = { ...apiPayloadBase };
-
-		// TODO: This is a temporary fix to handle the company schedule. Modify backend to handle this.
-		apiPayload.posting_frequency = {
-			story_interval_hours: schedule.storyFrequencyHours,
-			reel_interval_hours: schedule.postFrequencyHours,
-		};
-
-		console.log("Sending payload to API:", apiPayload);
-
+		setIsSubmitting(true);
 		try {
+			const finalData = { ...formData, schedule: data };
+			setFormData(finalData);
+
+			// Prepare payload for API based on documentation
+			const { schedule, ...apiPayloadBase } = finalData;
+			const apiPayload: any = { ...apiPayloadBase };
+
+			// TODO: This is a temporary fix to handle the company schedule. Modify backend to handle this.
+			apiPayload.posting_frequency = {
+				story_interval_hours: schedule.storyFrequencyHours,
+				reel_interval_hours: schedule.postFrequencyHours,
+			};
+
+			console.log("Sending payload to API:", apiPayload);
+
 			const response = await fetch(
 				"http://localhost:8000/sorcerer/init",
 				{
@@ -140,6 +142,8 @@ const CreateInfluencerPage = () => {
 			alert(
 				"Failed to connect to the API server. Please ensure it's running and accessible."
 			);
+		} finally {
+			setIsSubmitting(false);
 		}
 	};
 
@@ -149,6 +153,17 @@ const CreateInfluencerPage = () => {
 		<div className='min-h-screen w-full bg-[#111111] text-white flex items-center justify-center overflow-hidden'>
 			<div className='absolute inset-0 -z-10 h-full w-full bg-[#111111] bg-[radial-gradient(#ffffff1a_1px,transparent_1px)] [background-size:32px_32px]'></div>
 			<div className='absolute inset-0 -z-20 h-full w-full bg-gradient-to-tr from-black via-transparent to-purple-900/50 opacity-60'></div>
+
+			{isSubmitting && (
+				<div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-50">
+					<svg className="animate-spin h-10 w-10 text-white mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+						<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+						<path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+					</svg>
+					<h2 className="text-2xl font-bold text-white">Launching Your Influencer...</h2>
+					<p className="text-white/70 mt-2">Please wait a moment, we're setting things up.</p>
+				</div>
+			)}
 
 			<div className='w-full max-w-3xl'>
 				<AnimatePresence mode='wait'>
@@ -200,6 +215,7 @@ const CreateInfluencerPage = () => {
 								influencerType={mode}
 								onBack={handleBack}
 								onSubmit={handleSubmit}
+								isSubmitting={isSubmitting}
 							/>
 						</WizardStep>
 					)}
