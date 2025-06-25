@@ -81,7 +81,7 @@ const PostDetailsModal = ({
 			onClick={onClose}
 		>
 			<div
-				className='relative w-full max-w-4xl bg-gradient-to-br from-[#1c1c1c] to-[#111] border border-white/10 rounded-xl shadow-2xl shadow-purple-500/10 animate-fade-in-up'
+				className='relative w-full max-w-4xl bg-gradient-to-br from-[#1c1c1c] to-[#111] border border-white/10 rounded-xl shadow-2xl shadow-purple-500/10 animate-fade-in-up max-h-[90vh] flex flex-col'
 				onClick={(e) => e.stopPropagation()}
 			>
 				{/* Header */}
@@ -103,7 +103,7 @@ const PostDetailsModal = ({
 				</div>
 
 				{/* Body */}
-				<div className='grid md:grid-cols-2 gap-8 p-8'>
+				<div className='grid md:grid-cols-2 gap-8 p-8 overflow-y-auto'>
 					{/* Left: Preview */}
 					<div className='space-y-6'>
 						<h3 className='text-sm text-white/50 uppercase tracking-widest'>
