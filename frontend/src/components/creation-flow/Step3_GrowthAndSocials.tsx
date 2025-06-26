@@ -148,6 +148,7 @@ const Step3GrowthAndSocials: React.FC<Step3GrowthAndSocialsProps> = ({
 										}
 										className='w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg placeholder-white/30 text-white focus:outline-none focus:ring-2 focus:ring-teal-500/50'
 										placeholder='username'
+										autoComplete="off"
 									/>
 								</div>
 								<div>
@@ -167,6 +168,7 @@ const Step3GrowthAndSocials: React.FC<Step3GrowthAndSocialsProps> = ({
 											}
 											className='w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg placeholder-white/30 text-white focus:outline-none focus:ring-2 focus:ring-teal-500/50'
 											placeholder='password'
+											autoComplete="off"
 										/>
 										<button
 											type='button'
