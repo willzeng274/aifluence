@@ -1,21 +1,21 @@
-# AIfluence 🧠📱
+# AIFluence 🧠📱
 
-AIfluence is a platform that lets users create autonomous AI influencer personas capable of growing their own presence and publishing content—entirely on autopilot. Whether you're a business seeking a full-time brand ambassador or a creator hoping to monetize a niche, AIfluence offers a new way to scale influence through generative video, smart scheduling, and AI-driven storytelling.
+AIFluence is a platform that lets users create autonomous AI influencer personas capable of growing their own presence and publishing content—entirely on autopilot. Whether you're a business seeking a full-time brand ambassador or a creator hoping to monetize a niche, AIFluence offers a new way to scale influence through generative video, smart scheduling, and AI-driven storytelling.
 
 This project was built in 36 hours at SpurHacks 2025, where it won **1st Place for Best Startup** and the **Highest Userbase Potential** track, earning a total of **$11,000** in prizes.
 
 ---
 
-## 🧩 What AIfluence Does
+## 🧩 What AIFluence Does
 
-At its core, AIfluence is a marketing automation engine powered by AI-generated personas. Users can initialize a virtual influencer by giving it a name, backstory, tone, goals, and preferred audience. From there, the system handles the entire content lifecycle:
+At its core, AIFluence is a marketing automation engine powered by AI-generated personas. Users can initialize a virtual influencer by giving it a name, backstory, tone, goals, and preferred audience. From there, the system handles the entire content lifecycle:
 
 - It generates reels and stories using multimodal models like **Veo 3** and **Gemini 2.5 Pro**.
 - It schedules posts at your desired time.
 - It directly publishes to **Instagram** via the official **Publishing API**.
 - It builds a real-time digital identity and adapts based on user-defined objectives and "changes" to the persona's life
 
-AIfluence supports two key use cases:
+AIFluence supports two key use cases:
 - **B2B**: Businesses can build persistent, custom brand ambassadors tailored to their market segment.
 - **B2C**: Individual users or niche entrepreneurs can create lifestyle personas to explore passive-income opportunities—similar to dropshipping, but with content instead of products.
 
@@ -30,7 +30,7 @@ We used **Next.js** with **React** and **Tailwind CSS** to build an immersive an
 Our API server was built using **FastAPI**. It handles influencer initialization, scheduling, and communication with third-party services. It uses a local **SQLite** database to persist influencer data, metadata, and scheduling information.
 
 **Video & Media Generation:**  
-The most critical layer of AIfluence is our media generation pipeline, which connects multiple AI models to simulate influencer behavior:
+The most critical layer of AIFluence is our media generation pipeline, which connects multiple AI models to simulate influencer behavior:
 - **Veo 3 (Runway)**: Used for high-quality, scene-based reel generation.
 - **Gemini 2.5 Pro**: Used for generating photorealistic persona imagery and thumbnails based on persona attributes.
 - **MoviePy** + **PIL**: For assembling final videos with overlayed captions, transitions, and branding.
@@ -56,4 +56,4 @@ We used the official **Instagram Graph API** (Publishing) to automate reel and s
 
 Influencer marketing is booming, but it’s inefficient and expensive. Human influencers come with inconsistent availability, high costs, and limited scalability. We imagined a world where you could "design" an influencer that doesn't sleep, doesn't charge thousands per post, and aligns perfectly with your product or personal vision.
 
-AIfluence was born from this thought—giving creators and companies alike the tools to scale influence on demand.
+AIFluence was born from this thought—giving creators and companies alike the tools to scale influence on demand.
