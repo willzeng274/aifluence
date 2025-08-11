@@ -142,7 +142,7 @@ const Step2DefineIdentity: React.FC<Step2DefineIdentityProps> = ({
 									className='relative w-full h-48 px-4 py-3 bg-black/50 backdrop-blur-sm border border-white/10 placeholder-white/30 text-white focus:border-white/30 focus:outline-none transition-all duration-300 resize-none'
 									placeholder={
 										influencerType === "lifestyle"
-											? "e.g., A 6'2 nonchalant dreadhead that smashes snow bunnies in SF..."
+											? "e.g., Fitness coach influencer selling 30-day transformation programs and branded supplements..."
 											: "e.g., We create eco-friendly products to empower a sustainable future..."
 									}
 									required
