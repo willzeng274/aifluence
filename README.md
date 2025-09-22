@@ -7,6 +7,9 @@ Won 11k @ SpurHacks.
 
 </div>
 
+<img width="1461" height="738" alt="Screenshot 2025-09-21 at 9 27 22 PM" src="https://github.com/user-attachments/assets/0b20c643-8fdd-4323-a316-be0a051db355" />
+
+
 ## What It Does
 Users initialize a virtual influencer by giving it a name, backstory, tone, goals, and preferred audience. From there, the system handles the entire content lifecycle:
 
